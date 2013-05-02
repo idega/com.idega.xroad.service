@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This file was auto-generated from WSDL -->
+<!-- by the Apache Axis2 version: 1.6.1  Built on : Aug 31, 2011 (12:22:40 CEST) -->
+<serviceGroup>
+    <service name="ehubserviceService">
+        <messageReceivers>
+            <messageReceiver mep="http://www.w3.org/ns/wsdl/in-out" class="com.idega.xroad.service.wsdl.EhubserviceServiceMessageReceiverInOut"/>
+        </messageReceivers>
+        <parameter name="ServiceClass">com.idega.xroad.service.wsdl.EhubserviceServiceSkeleton</parameter>
+        <parameter name="useOriginalwsdl">false</parameter>
+        <parameter name="modifyUserWSDLPortAddress">true</parameter>
+        <operation name="GetCaseList" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetCaseListResponse</outputActionMapping>
+        </operation>
+        <operation name="GetCaseDetails" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetCaseDetailsResponse</outputActionMapping>
+        </operation>
+        <operation name="GetXFormLabels" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetXFormLabelsResponse</outputActionMapping>
+        </operation>
+        <operation name="GetNotifications" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetNotifications</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetNotificationsResponse</outputActionMapping>
+        </operation>
+        <operation name="GetDocument" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetDocumentResponse</outputActionMapping>
+        </operation>
+        <operation name="allowedMethods" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/allowedMethodsResponse</outputActionMapping>
+        </operation>
+        <operation name="GetServiceList" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetServiceListResponse</outputActionMapping>
+        </operation>
+        <operation name="GetMessagesList" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetMessagesListResponse</outputActionMapping>
+        </operation>
+        <operation name="SubmitDocument" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/SubmitDocumentResponse</outputActionMapping>
+        </operation>
+        <operation name="GetPrefilledDocument" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetPrefilledDocumentResponse</outputActionMapping>
+        </operation>
+    </service>
+</serviceGroup>
