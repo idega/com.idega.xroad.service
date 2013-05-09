@@ -6,87 +6,252 @@
  */
 package com.idega.xroad.service.wsdl;
 
-import is.idega.idegaweb.egov.message.business.CommuneMessageBusiness;
 import is.idega.idegaweb.egov.message.data.UserMessage;
 
-import java.rmi.RemoteException;
 import java.util.Collection;
-import java.util.logging.Level;
+import java.util.List;
 import java.util.logging.Logger;
 
-import javax.ejb.FinderException;
-
+import net.x_rd.ee.ehubservice.producer.CaseProcessingStep_type0;
+import net.x_rd.ee.ehubservice.producer.Case_type0;
+import net.x_rd.ee.ehubservice.producer.GetCaseDetails;
+import net.x_rd.ee.ehubservice.producer.GetCaseDetailsE;
+import net.x_rd.ee.ehubservice.producer.GetCaseDetailsRequest;
+import net.x_rd.ee.ehubservice.producer.GetCaseDetailsResponse;
+import net.x_rd.ee.ehubservice.producer.GetCaseDetailsResponseE;
+import net.x_rd.ee.ehubservice.producer.GetCaseList;
+import net.x_rd.ee.ehubservice.producer.GetCaseListE;
+import net.x_rd.ee.ehubservice.producer.GetCaseListRequest;
+import net.x_rd.ee.ehubservice.producer.GetCaseListResponse;
+import net.x_rd.ee.ehubservice.producer.GetCaseListResponseE;
 import net.x_rd.ee.ehubservice.producer.GetMessagesList;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListE;
+import net.x_rd.ee.ehubservice.producer.GetMessagesListRequest;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListResponse;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListResponseE;
 import net.x_rd.ee.ehubservice.producer.GetServiceList;
 import net.x_rd.ee.ehubservice.producer.GetServiceListE;
+import net.x_rd.ee.ehubservice.producer.GetServiceListRequest;
 import net.x_rd.ee.ehubservice.producer.GetServiceListResponse;
 import net.x_rd.ee.ehubservice.producer.GetServiceListResponseE;
 import net.x_rd.ee.ehubservice.producer.LabelType;
 import net.x_rd.ee.ehubservice.producer.LangType;
 import net.x_rd.ee.ehubservice.producer.Message_type0;
-import net.x_rd.ee.ehubservice.producer.Request_type8;
-import net.x_rd.ee.ehubservice.producer.Request_type9;
 import net.x_rd.ee.ehubservice.producer.Response_type10;
+import net.x_rd.ee.ehubservice.producer.Response_type3;
 import net.x_rd.ee.ehubservice.producer.Response_type5;
+import net.x_rd.ee.ehubservice.producer.Response_type8;
 
-import com.idega.business.IBOLookup;
-import com.idega.business.IBOLookupException;
-import com.idega.user.business.UserBusiness;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
+
+import com.idega.block.process.data.Case;
+import com.idega.core.business.DefaultSpringBean;
+import com.idega.idegaweb.IWMainApplication;
+import com.idega.idegaweb.IWMainApplicationSettings;
 import com.idega.user.data.User;
+import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
 import com.idega.util.ListUtil;
 import com.idega.util.StringUtil;
+import com.idega.util.expression.ELUtil;
+import com.idega.xroad.service.business.BPMCasesService;
+import com.idega.xroad.service.business.CasesService;
+import com.idega.xroad.service.business.LegacyCasesService;
 
 /**
  * EhubserviceServiceSkeleton java skeleton for the axisService
  */
 /**
- * <p>TODO</p>
+ * <p>Implementation of EHub service for X-Road</p>
  * <p>You can report about problems to: 
  * <a href="mailto:martynas@idega.is">Martynas Stakė</a></p>
  *
  * @version 1.0.0 May 2, 2013
  * @author <a href="mailto:martynas@idega.is">Martynas Stakė</a>
  */
-public class EhubserviceServiceSkeleton implements
+@Service
+@Scope(BeanDefinition.SCOPE_PROTOTYPE)
+public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		EhubserviceServiceSkeletonInterface {
 	
 	protected static final Logger LOGGER = Logger.getLogger(
 			EhubserviceServiceSkeleton.class.getName());
 	
-	private CommuneMessageBusiness communeMessageBusiness;
+	@Autowired
+	private BPMCasesService bpmCasesService = null;
 	
-	private UserBusiness userBusiness = null;
+	@Autowired
+	private LegacyCasesService legacyCasesService = null;
 	
+	// providerId = process id
 	/**
-	 * Auto generated method signature
 	 * 
-	 * @param getCaseList54
-	 * @return getCaseListResponse61
+	 * <p>Searches database for available {@link Case}s by given 
+	 * service provider id an {@link User#getId()}. 
+	 * If service provider id not given, exception will be thrown.</p>
+	 * @param caseListRequestE - request from client, which contains 
+	 * service provider id and {@link User#getId()}, not <code>null</code>;
+	 * @return response filled with data from {@link Collection} of 
+	 * {@link Case}s.
+	 * @throws NullPointerException when service provider id not given
+	 * or nothing found by given provider id.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
+	public GetCaseListResponseE getCaseList(GetCaseListE caseListRequestE) {
+		if (caseListRequestE == null) {
+			throw new NullPointerException(GetCaseListE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		
+		GetCaseList caseListRequest = caseListRequestE.getGetCaseList();
+		if (caseListRequest == null) {
+			throw new NullPointerException(GetCaseList.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+				
+		GetCaseListRequest request = caseListRequest.getRequest();
+		if (request == null) {
+			throw new NullPointerException(GetCaseListRequest.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		String serviceProviderID = request.getServiceProviderId();
+		if (StringUtil.isEmpty(serviceProviderID)) {
+			throw new NullPointerException("Service provider ID " + 
+					"is null. Please provide correct service provider id!");
+		}
 
-	public net.x_rd.ee.ehubservice.producer.GetCaseListResponseE getCaseList(
-			net.x_rd.ee.ehubservice.producer.GetCaseListE getCaseList54) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException("Please implement "
-				+ this.getClass().getName() + "#getCaseList");
+		String personalID = request.getCitizenId();
+		if (StringUtil.isEmpty(personalID)) {
+			throw new NullPointerException("Personal ID of " + User.class + 
+					"is null. Please provide correct personal id!");
+		}
+		
+		Collection<Case> activeCases = getCasesService(null).getCases(personalID);
+		if (ListUtil.isEmpty(activeCases)) {
+			throw new NullPointerException("No cases found for " + 
+					User.class.getName() + " by personalID: " + personalID);
+		}
+		
+		Response_type3 response = new Response_type3();
+		for (Case activeCase : activeCases) {
+			Case_type0 caseType = new Case_type0();
+			caseType.setId(activeCase.getCaseIdentifier());
+			caseType.setLastOperationDate(getCasesService(activeCase)
+					.getLastOperationDate(activeCase, null));
+			caseType.setNameLabel(getLabelType(activeCase.getSubject()));
+			caseType.setNextOperationTime(null);
+			caseType.setOfficial(getCasesService(activeCase).getOfficialName(activeCase));
+			caseType.setOrgLabel(getLabelType(getOrganizationName()));
+			caseType.setServiceId(serviceProviderID);
+			caseType.setStatusLabel(
+					getLabelType(getCasesService(activeCase).getStatus(activeCase, null)));
+			caseType.setTypeLabel(getLabelType(getCasesService(activeCase)
+					.getServiceDescription(activeCase)));
+				
+			response.add_case(caseType);
+		}
+		
+		GetCaseListResponse caseListResponse = new GetCaseListResponse();
+		caseListResponse.setResponse(response);
+		caseListResponse.setRequest(request);
+				
+		GetCaseListResponseE caseListResponseE = new GetCaseListResponseE();
+		caseListResponseE.setGetCaseListResponse(caseListResponse);
+		return caseListResponseE;
 	}
 
 	/**
-	 * Auto generated method signature
 	 * 
-	 * @param getCaseDetails62
-	 * @return getCaseDetailsResponse69
+	 * <p>Searches database for {@link Case} by given 
+	 * service provider id an {@link Case#getCaseIdentifier()}. 
+	 * If service provider id or case identifier not given, 
+	 * exception will be thrown.</p>
+	 * @param caseDetailsRequestE - request from client, which contains 
+	 * service provider id and {@link Case#getCaseIdentifier()}, 
+	 * not <code>null</code>;
+	 * @return response filled with data from {@link Case}.
+	 * @throws NullPointerException when service provider id not given
+	 * or nothing found by given case identifier.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
-
-	public net.x_rd.ee.ehubservice.producer.GetCaseDetailsResponseE getCaseDetails(
-			net.x_rd.ee.ehubservice.producer.GetCaseDetailsE getCaseDetails62) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException("Please implement "
-				+ this.getClass().getName() + "#getCaseDetails");
+	public GetCaseDetailsResponseE getCaseDetails(
+			GetCaseDetailsE caseDetailsRequestE) {
+		if (caseDetailsRequestE == null) {
+			throw new NullPointerException(GetCaseDetailsE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		GetCaseDetails caseDetails = caseDetailsRequestE.getGetCaseDetails();
+		if (caseDetails == null) {
+			throw new NullPointerException(GetCaseDetails.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		GetCaseDetailsRequest request = caseDetails.getRequest();
+		if (request == null) {
+			throw new NullPointerException(GetCaseDetailsRequest.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		String serviceProviderID = request.getServiceProviderId();
+		if (StringUtil.isEmpty(serviceProviderID)) {
+			throw new NullPointerException("Service provider ID " + 
+					"is null. Please provide correct service provider id!");
+		}
+		
+		String caseID = request.getCaseId();
+		if (StringUtil.isEmpty(caseID)) {
+			throw new NullPointerException("Case ID " + 
+					"is null. Please provide correct case id!");
+		}
+		
+		Case selectedCase = getCasesService(null).getCase(caseID);
+		if (selectedCase == null) {
+			throw new NullPointerException(Case.class.getName() + " by id: " +
+					caseID + " not found!");
+		}
+		
+		List<Long> ids = getCasesService(selectedCase)
+				.getStepIDs(selectedCase);
+		if (ListUtil.isEmpty(ids)) {
+			throw new NullPointerException(Case.class.getName() + " by id: " +
+					caseID + " does not have steps!");
+		}
+		
+		Response_type8 response = new Response_type8();
+		for (long id : ids) {
+			CaseProcessingStep_type0 caseProcessingStep = new CaseProcessingStep_type0();
+			caseProcessingStep.setDocumentId(getCasesService(selectedCase)
+					.getFirstDocumentID(selectedCase, id));
+			caseProcessingStep.setOfficial(getCasesService(selectedCase)
+					.getOfficialName(selectedCase));
+			caseProcessingStep.setOperationDate(getCasesService(selectedCase)
+					.getLastOperationDate(selectedCase, id));
+			caseProcessingStep.setOrgLabel(getLabelType(getOrganizationName()));
+			caseProcessingStep.setStatusLabel(getLabelType(
+					getCasesService(selectedCase).getStatus(selectedCase, id)));
+			caseProcessingStep.setStepId(String.valueOf(id));
+			caseProcessingStep.setStepName(getCasesService(selectedCase)
+					.getName(selectedCase, id));
+			caseProcessingStep.setStepUrl(
+					getCasesService(selectedCase).getStepURL(selectedCase, id));
+			
+			response.addCaseProcessingStep(caseProcessingStep);
+		}
+				
+		GetCaseDetailsResponse caseDetailsResponse = new GetCaseDetailsResponse();
+		caseDetailsResponse.setResponse(response);
+		caseDetailsResponse.setRequest(request);
+		
+		GetCaseDetailsResponseE caseDetailsResponseE = new GetCaseDetailsResponseE();
+		caseDetailsResponseE.setGetCaseDetailsResponse(caseDetailsResponse);
+		
+		return caseDetailsResponseE;
 	}
 
 	/**
@@ -171,10 +336,10 @@ public class EhubserviceServiceSkeleton implements
 							" does not have required service list.");
 		}
 
-		Request_type9 request = serviceListRequest.getRequest();
+		GetServiceListRequest request = serviceListRequest.getRequest();
 		if (request == null) {
 			throw new java.lang.NullPointerException(
-					Request_type9.class.getName()  + " is null.");
+					GetServiceListRequest.class.getName()  + " is null.");
 		}
 
 		String serviceProviderId = request.getServiceProviderId();
@@ -217,6 +382,7 @@ public class EhubserviceServiceSkeleton implements
 		
 		GetServiceListResponse serviceListResponse = new GetServiceListResponse();
 		serviceListResponse.setResponse(response);
+		serviceListResponse.setRequest(request);
 		
 		GetServiceListResponseE serviceListResponseE = new GetServiceListResponseE();
 		serviceListResponseE.setGetServiceListResponse(serviceListResponse);		
@@ -248,9 +414,9 @@ public class EhubserviceServiceSkeleton implements
 					" is null. Please provide correct request!");
 		}
 		
-		Request_type8 request = messagesListRequest.getRequest();
+		GetMessagesListRequest request = messagesListRequest.getRequest();
 		if (request == null) {
-			throw new NullPointerException(Request_type8.class.getName() + 
+			throw new NullPointerException(GetMessagesListRequest.class.getName() + 
 					" is null. Please provide correct request!");
 		}
 		
@@ -266,15 +432,7 @@ public class EhubserviceServiceSkeleton implements
 					"is null. Please provide correct personal id!");
 		}
 		
-		Collection<UserMessage> messages = null;
-		try {
-			messages = getCommuneMessageBusiness().findMessages(getUser(personalID));
-		} catch (Exception e) {
-			LOGGER.log(Level.WARNING, "Unable to find " + 
-					UserMessage.class.getName() + " for " + User.class + 
-					" by id: " + personalID, e);
-		}
-		
+		Collection<UserMessage> messages = getCasesService(null).getMessages(personalID);
 		if (ListUtil.isEmpty(messages)) {
 			throw new NullPointerException("No messages found for " + 
 					User.class.getName() + " by personal id: " + personalID);
@@ -286,8 +444,8 @@ public class EhubserviceServiceSkeleton implements
 			messageType.setBody(message.getBody());
 			messageType.setDate(message.getCreated());
 			messageType.setId(message.getId());
-			messageType.setOfficial(message.getOwner().getName());
-			messageType.setOrgLabel(getLabelType(message.getSubject()));
+			messageType.setOfficial(getCasesService(message).getOfficialName(message));
+			messageType.setOrgLabel(getLabelType(getOrganizationName()));
 			messageType.setSubject(message.getSubject());
 			
 			response.addMessage(messageType);
@@ -329,61 +487,8 @@ public class EhubserviceServiceSkeleton implements
 		throw new java.lang.UnsupportedOperationException("Please implement "
 				+ this.getClass().getName() + "#getPrefilledDocument");
 	}
-	
-	protected CommuneMessageBusiness getCommuneMessageBusiness() {
-		if (this.communeMessageBusiness != null) {
-			return this.communeMessageBusiness;
-		}
-		
-		try {
-			this.communeMessageBusiness = IBOLookup.getServiceInstance(
-					CoreUtil.getIWContext(), CommuneMessageBusiness.class);
-		} catch (IBOLookupException e) {
-			LOGGER.log(Level.WARNING, 
-					"Unable to get: " + CommuneMessageBusiness.class + ": ", e);
-		}
-		
-		return this.communeMessageBusiness;
-	}
-	
-	protected UserBusiness getUserBusiness() {
-		if (this.userBusiness != null) {
-			return this.userBusiness;
-		}
 
-		try {
-			this.userBusiness = IBOLookup.getServiceInstance(
-					CoreUtil.getIWContext(), UserBusiness.class);
-		} catch (IBOLookupException e) {
-			LOGGER.log(Level.WARNING, 
-					"Unable to get: " + UserBusiness.class + ": ", e);
-		}
-
-		return this.userBusiness;
-	}
-	
-	protected User getUser(String personalId) {
-		if (StringUtil.isEmpty(personalId)) {
-			return null;
-		}
-		
-		try {
-			return getUserBusiness().getUser(personalId);
-		} catch (RemoteException e) {
-			LOGGER.log(Level.WARNING, "Unable to connect database: ", e);
-		} catch (FinderException e) {
-			LOGGER.log(Level.WARNING, "Unable to find " + User.class + 
-					" by personal id: " + personalId);
-		}
-		
-		return null;
-	}
-	
 	protected LabelType getLabelType(String label) {
-		if (StringUtil.isEmpty(label)) {
-			return null;
-		}
-		
 		LabelType labelType = new LabelType();
 		labelType.setText(label);
 		
@@ -392,5 +497,31 @@ public class EhubserviceServiceSkeleton implements
 		labelType.setLang(langType);
 		
 		return labelType;
+	}
+	
+	protected String getOrganizationName() {
+		IWMainApplicationSettings settings = IWMainApplication
+				.getDefaultIWMainApplication().getSettings();
+		if (settings == null) {
+			return null;
+		}
+		
+		return settings.getProperty(CoreConstants.ORGANIZATION_NAME, "Idega");
+	}
+	
+	protected CasesService getCasesService(Case theCase) {		
+		if (theCase == null || StringUtil.isEmpty(theCase.getCaseManagerType())) {
+			if (this.legacyCasesService == null) {
+				ELUtil.getInstance().autowire(this);
+			}
+			
+			return this.legacyCasesService;
+		} else {
+			if (this.bpmCasesService == null) {
+				ELUtil.getInstance().autowire(this);
+			}
+			
+			return this.bpmCasesService;
+		}
 	}
 }
