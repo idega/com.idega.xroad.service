@@ -10,6 +10,7 @@ import is.idega.idegaweb.egov.message.data.UserMessage;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import net.x_rd.ee.ehubservice.producer.CaseProcessingStep_type0;
@@ -34,10 +35,17 @@ import net.x_rd.ee.ehubservice.producer.GetServiceListE;
 import net.x_rd.ee.ehubservice.producer.GetServiceListRequest;
 import net.x_rd.ee.ehubservice.producer.GetServiceListResponse;
 import net.x_rd.ee.ehubservice.producer.GetServiceListResponseE;
+import net.x_rd.ee.ehubservice.producer.GetXFormLabels;
+import net.x_rd.ee.ehubservice.producer.GetXFormLabelsE;
+import net.x_rd.ee.ehubservice.producer.GetXFormLabelsRequest;
+import net.x_rd.ee.ehubservice.producer.GetXFormLabelsResponse;
+import net.x_rd.ee.ehubservice.producer.GetXFormLabelsResponseE;
+import net.x_rd.ee.ehubservice.producer.LabelPair_type0;
 import net.x_rd.ee.ehubservice.producer.LabelType;
 import net.x_rd.ee.ehubservice.producer.LangType;
 import net.x_rd.ee.ehubservice.producer.Message_type0;
 import net.x_rd.ee.ehubservice.producer.Response_type10;
+import net.x_rd.ee.ehubservice.producer.Response_type12;
 import net.x_rd.ee.ehubservice.producer.Response_type3;
 import net.x_rd.ee.ehubservice.producer.Response_type5;
 import net.x_rd.ee.ehubservice.producer.Response_type8;
@@ -47,6 +55,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
+import com.idega.block.form.data.XForm;
 import com.idega.block.process.data.Case;
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.idegaweb.IWMainApplication;
@@ -56,10 +65,12 @@ import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
 import com.idega.util.ListUtil;
 import com.idega.util.StringUtil;
+import com.idega.util.datastructures.map.MapUtil;
 import com.idega.util.expression.ELUtil;
 import com.idega.xroad.service.business.BPMCasesService;
 import com.idega.xroad.service.business.CasesService;
 import com.idega.xroad.service.business.LegacyCasesService;
+import com.idega.xroad.service.business.XFormService;
 
 /**
  * EhubserviceServiceSkeleton java skeleton for the axisService
@@ -79,6 +90,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	
 	protected static final Logger LOGGER = Logger.getLogger(
 			EhubserviceServiceSkeleton.class.getName());
+	
+	@Autowired
+	private XFormService xFormService;
 	
 	@Autowired
 	private BPMCasesService bpmCasesService = null;
@@ -255,17 +269,78 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	}
 
 	/**
-	 * Auto generated method signature
 	 * 
-	 * @param getXFormLabels70
-	 * @return getXFormLabelsResponse77
+	 * <p>Searches database for localized labels of {@link XForm} by given 
+	 * service provider id, language and {@link XForm#getFormId()}. 
+	 * If service provider id or case identifier not given, 
+	 * exception will be thrown.</p>
+	 * @param xFormLabelsE - request from client, which contains 
+	 * service provider id, language and {@link XForm#getFormId()}, 
+	 * not <code>null</code>;
+	 * @return response filled with labels from {@link XForm}.
+	 * @throws NullPointerException when service provider id not given
+	 * or nothing found by given {@link XForm} identifier.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
+	public GetXFormLabelsResponseE getXFormLabels(GetXFormLabelsE xFormLabelsE) {
+		if (xFormLabelsE == null) {
+			throw new NullPointerException(GetXFormLabelsE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		GetXFormLabels xformsLabels = xFormLabelsE.getGetXFormLabels();
+		if (xformsLabels == null) {
+			throw new NullPointerException(GetXFormLabels.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		GetXFormLabelsRequest request = xformsLabels.getRequest();
+		if (request == null) {
+			throw new NullPointerException(GetXFormLabelsRequest.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		String serviceProviderID = request.getServiceProviderId();
+		if (StringUtil.isEmpty(serviceProviderID)) {
+			throw new NullPointerException("Service provider ID " + 
+					"is null. Please provide correct service provider id!");
+		}
+		
+		String xformID = request.getXFormId();
+		if (StringUtil.isEmpty(xformID)) {
+			throw new NullPointerException("XForm ID " + 
+					"is null. Please provide correct xforms id!");
+		}
 
-	public net.x_rd.ee.ehubservice.producer.GetXFormLabelsResponseE getXFormLabels(
-			net.x_rd.ee.ehubservice.producer.GetXFormLabelsE getXFormLabels70) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException("Please implement "
-				+ this.getClass().getName() + "#getXFormLabels");
+		LangType language = request.getLang();
+		if (language == null) {
+			throw new NullPointerException("XForm language not provided. " + 
+					" Please provide labels language!");
+		}
+		
+		Map<String, String> labels = getXFormService()
+				.getXFormLabels(xformID, language.getLangType());
+		if (MapUtil.isEmpty(labels)) {
+			throw new NullPointerException("No labels for " + 
+					XForm.class.getName() + " by id: " + xformID);
+		}
+		
+		Response_type12 response = new Response_type12();
+		for (String key : labels.keySet()) {
+			LabelPair_type0 labelPair = new LabelPair_type0();
+			labelPair.setKey(key);
+			labelPair.setLabel(labels.get(key));
+			response.addLabelPair(labelPair);
+		}	
+		
+		GetXFormLabelsResponse xFormLabelsResponse = new GetXFormLabelsResponse();
+		xFormLabelsResponse.setResponse(response);
+		xFormLabelsResponse.setRequest(request);
+		
+		GetXFormLabelsResponseE xFormsLabelsResponseE = new GetXFormLabelsResponseE();
+		xFormsLabelsResponseE.setGetXFormLabelsResponse(xFormLabelsResponse);
+		
+		return xFormsLabelsResponseE;
 	}
 
 	/**
@@ -523,5 +598,13 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			
 			return this.bpmCasesService;
 		}
+	}
+	
+	protected XFormService getXFormService() {
+		if (this.xFormService == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return this.xFormService;
 	}
 }
