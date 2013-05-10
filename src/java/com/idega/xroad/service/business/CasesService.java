@@ -82,8 +82,6 @@
  */
 package com.idega.xroad.service.business;
 
-import is.idega.idegaweb.egov.application.business.ApplicationBusiness;
-import is.idega.idegaweb.egov.application.data.Application;
 import is.idega.idegaweb.egov.cases.business.CasesBusiness;
 import is.idega.idegaweb.egov.message.business.CommuneMessageBusiness;
 import is.idega.idegaweb.egov.message.data.UserMessage;
@@ -111,6 +109,7 @@ import com.idega.core.business.DefaultSpringBean;
 import com.idega.data.IDOLookup;
 import com.idega.data.IDOLookupException;
 import com.idega.user.business.UserBusiness;
+import com.idega.user.data.Group;
 import com.idega.user.data.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
@@ -135,8 +134,6 @@ public abstract class CasesService extends DefaultSpringBean{
 	private CasesBusiness casesBusiness;
 	
 	private UserBusiness userBusiness = null;
-	
-	private ApplicationBusiness applicationBusiness = null;
 	
 	private CaseLogHome caseLogHome = null;
 	
@@ -204,37 +201,6 @@ public abstract class CasesService extends DefaultSpringBean{
 	
 	/**
 	 * 
-	 * @param theCase which {@link Application} is required, 
-	 * not <code>null</code>;
-	 * @return localized {@link Application#getName()} or <code>null</code>
-	 * on failure. 
-	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
-	 */
-	public String getServiceDescription(Case theCase) {
-		if (theCase == null) {
-			return null;
-		}
-
-		Application application = getApplication(theCase);
-		if (application == null) {
-			return null;
-		}
-		
-		String name = application.getLocalizedName(getCurrentLocale());
-		if (!StringUtil.isEmpty(name)) {
-			return name;
-		}
-		
-		name = application.getNameByLocale();
-		if (!StringUtil.isEmpty(name)) {
-			return name;
-		}
-		
-		return application.getName();
-	}
-	
-	/**
-	 * 
 	 * @param personalID - {@link User#getPersonalID()}, not <code>null</code>;
 	 * @return {@link Case}s for {@link User} or <code>null</code> on failure.
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
@@ -273,9 +239,9 @@ public abstract class CasesService extends DefaultSpringBean{
 	
 	/**
 	 * 
-	 * <p>TODO</p>
-	 * @param theCase
-	 * @return
+	 * @param theCase to search handler for, not <code>null</code>
+	 * @return name of handler or his {@link Group}, 
+	 * {@link CoreConstants#EMPTY} on failure;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public abstract String getOfficialName(Case theCase);
@@ -341,10 +307,12 @@ public abstract class CasesService extends DefaultSpringBean{
 		
 	/**
 	 * 
-	 * <p>TODO</p>
-	 * @param theCase
-	 * @param stepID
-	 * @return
+	 * @param theCase which has task, not <code>null</code>;
+	 * @param stepID - id of task, which has attachments, not <code>null</code>;
+	 * @return first document ID in {@link Collection} which is found by
+	 * given criteria.
+	 * @deprecated use {@link CasesService#getDocumentsIDs(Case, Long)} instead,
+	 * this will be removed as soon as possible.
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public String getFirstDocumentID(Case theCase, Long stepID) {
@@ -517,41 +485,6 @@ public abstract class CasesService extends DefaultSpringBean{
 		}
 
 		return this.userBusiness;
-	}
-	
-	protected ApplicationBusiness getApplicationBusiness() {
-		if (this.applicationBusiness != null) {
-			return this.applicationBusiness;
-		}
-
-		try {
-			this.applicationBusiness = IBOLookup.getServiceInstance(
-					CoreUtil.getIWContext(), ApplicationBusiness.class);
-		} catch (IBOLookupException e) {
-			getLogger().log(Level.WARNING, 
-					"Unable to get: " + ApplicationBusiness.class + ": ", e);
-		}
-
-		return this.applicationBusiness;
-	}
-	
-	protected Application getApplication(Case theCase) {
-		if (theCase == null) {
-			return null;
-		}
-		
-		try {
-			return getApplicationBusiness().getApplication(
-					theCase.getCaseCode().getCode());
-		} catch (RemoteException e) {
-			getLogger().log(Level.WARNING, "Unable to connect datasource: ", e);
-		} catch (FinderException e) {
-			getLogger().log(Level.WARNING, "Unable to find " + 
-					Application.class.getName() + " by case: " + 
-					theCase);
-		}
-		
-		return null;
 	}
 	
 	protected Collection<CaseLog> getCaseLogs(

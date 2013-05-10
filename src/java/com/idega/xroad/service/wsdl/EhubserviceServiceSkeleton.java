@@ -6,12 +6,16 @@
  */
 package com.idega.xroad.service.wsdl;
 
+import is.idega.idegaweb.egov.application.data.Application;
 import is.idega.idegaweb.egov.message.data.UserMessage;
 
+import java.net.URL;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import javax.activation.DataHandler;
 
 import net.x_rd.ee.ehubservice.producer.CaseProcessingStep_type0;
 import net.x_rd.ee.ehubservice.producer.Case_type0;
@@ -49,6 +53,7 @@ import net.x_rd.ee.ehubservice.producer.Response_type12;
 import net.x_rd.ee.ehubservice.producer.Response_type3;
 import net.x_rd.ee.ehubservice.producer.Response_type5;
 import net.x_rd.ee.ehubservice.producer.Response_type8;
+import net.x_rd.ee.ehubservice.producer.ServiceEntry_type0;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -67,6 +72,7 @@ import com.idega.util.ListUtil;
 import com.idega.util.StringUtil;
 import com.idega.util.datastructures.map.MapUtil;
 import com.idega.util.expression.ELUtil;
+import com.idega.xroad.service.business.ApplicationService;
 import com.idega.xroad.service.business.BPMCasesService;
 import com.idega.xroad.service.business.CasesService;
 import com.idega.xroad.service.business.LegacyCasesService;
@@ -99,6 +105,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	
 	@Autowired
 	private LegacyCasesService legacyCasesService = null;
+	
+	@Autowired
+	private ApplicationService applicationService = null;
 	
 	// providerId = process id
 	/**
@@ -164,7 +173,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			caseType.setServiceId(serviceProviderID);
 			caseType.setStatusLabel(
 					getLabelType(getCasesService(activeCase).getStatus(activeCase, null)));
-			caseType.setTypeLabel(getLabelType(getCasesService(activeCase)
+			caseType.setTypeLabel(getLabelType(getApplicationService()
 					.getServiceDescription(activeCase)));
 				
 			response.add_case(caseType);
@@ -416,44 +425,41 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			throw new java.lang.NullPointerException(
 					GetServiceListRequest.class.getName()  + " is null.");
 		}
-
+		
 		String serviceProviderId = request.getServiceProviderId();
 		if (StringUtil.isEmpty(serviceProviderId)) {
 			throw new java.lang.NullPointerException("No provider id is given, " +
 					"nothing to return.");
 		}
 		
-//		List<ServiceEntity> services = getServiceEntityDAO().getServices();
-//		if (ListUtil.isEmpty(services)) {
-//			throw new java.lang.NullPointerException("Unable to find services by " +
-//					"provider id: " + serviceProviderId);
-//		}
+		Collection<Application> services = getApplicationService().getServices();
+		if (ListUtil.isEmpty(services)) {
+			throw new java.lang.NullPointerException("No services found on this system!");
+		}
 		
 		Response_type10 response = new Response_type10();
-//		for (ServiceEntity service : services) {
+		for (Application service : services) {
 			
 			/* Setting service id */
-//			ServiceEntry_type0 serviceEntry = new ServiceEntry_type0();
-//			serviceEntry.setId(service.getId().toString());
+			ServiceEntry_type0 serviceEntry = new ServiceEntry_type0();
+			serviceEntry.setId(service.getPrimaryKey().toString());
 			
 			/* Setting label */
-//			LabelType labelType = new LabelType();
-//			LangType langType = new LangType();
-//			langType.setLangType(CoreUtil.getCurrentLocale().getLanguage());
-//			labelType.setLang(langType);
-//			labelType.setText(service.getName());
-//			serviceEntry.setNameLabel(labelType);
+			LabelType labelType = new LabelType();
+			LangType langType = new LangType();
+			langType.setLangType(CoreUtil.getCurrentLocale().getLanguage());
+			labelType.setLang(langType);
+			labelType.setText(service.getName());
+			serviceEntry.setNameLabel(labelType);
 			
-			/* URI to icon */
-//			try {
-//				serviceEntry.setIcon(new DataHandler(new URL(service.getIconURI())));
-//			} catch (MalformedURLException e) {
-//				throw new java.lang.NullPointerException(
-//						"Unable to create URL for: " + service.getIconURI());
-//			}
+			/* Setting application icon */
+			URL icon = getApplicationService().getServiceLogoURL(service);
+			if (icon != null) {
+				serviceEntry.setIcon(new DataHandler(icon));
+			}
 			
-//			response.addServiceEntry(serviceEntry);
-//		}
+			response.addServiceEntry(serviceEntry);
+		}
 		
 		GetServiceListResponse serviceListResponse = new GetServiceListResponse();
 		serviceListResponse.setResponse(response);
@@ -606,5 +612,13 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		}
 		
 		return this.xFormService;
+	}
+	
+	protected ApplicationService getApplicationService() {
+		if (this.applicationService == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return this.applicationService;
 	}
 }
