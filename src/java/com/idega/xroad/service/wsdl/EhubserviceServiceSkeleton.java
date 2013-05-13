@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.mail.util.ByteArrayDataSource;
 
 import net.x_rd.ee.ehubservice.producer.CaseProcessingStep_type0;
 import net.x_rd.ee.ehubservice.producer.Case_type0;
@@ -29,6 +31,11 @@ import net.x_rd.ee.ehubservice.producer.GetCaseListE;
 import net.x_rd.ee.ehubservice.producer.GetCaseListRequest;
 import net.x_rd.ee.ehubservice.producer.GetCaseListResponse;
 import net.x_rd.ee.ehubservice.producer.GetCaseListResponseE;
+import net.x_rd.ee.ehubservice.producer.GetDocument;
+import net.x_rd.ee.ehubservice.producer.GetDocumentE;
+import net.x_rd.ee.ehubservice.producer.GetDocumentRequest;
+import net.x_rd.ee.ehubservice.producer.GetDocumentResponse;
+import net.x_rd.ee.ehubservice.producer.GetDocumentResponseE;
 import net.x_rd.ee.ehubservice.producer.GetMessagesList;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListE;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListRequest;
@@ -52,6 +59,7 @@ import net.x_rd.ee.ehubservice.producer.Response_type10;
 import net.x_rd.ee.ehubservice.producer.Response_type12;
 import net.x_rd.ee.ehubservice.producer.Response_type3;
 import net.x_rd.ee.ehubservice.producer.Response_type5;
+import net.x_rd.ee.ehubservice.producer.Response_type6;
 import net.x_rd.ee.ehubservice.producer.Response_type8;
 import net.x_rd.ee.ehubservice.producer.ServiceEntry_type0;
 
@@ -59,10 +67,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Document;
 
 import com.idega.block.form.data.XForm;
 import com.idega.block.process.data.Case;
 import com.idega.core.business.DefaultSpringBean;
+import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWMainApplicationSettings;
 import com.idega.user.data.User;
@@ -72,6 +82,7 @@ import com.idega.util.ListUtil;
 import com.idega.util.StringUtil;
 import com.idega.util.datastructures.map.MapUtil;
 import com.idega.util.expression.ELUtil;
+import com.idega.util.xml.XmlUtil;
 import com.idega.xroad.service.business.ApplicationService;
 import com.idega.xroad.service.business.BPMCasesService;
 import com.idega.xroad.service.business.CasesService;
@@ -367,17 +378,94 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	}
 
 	/**
-	 * Auto generated method signature
 	 * 
-	 * @param getDocument86
-	 * @return getDocumentResponse93
+	 * @param documentE - request with document id and service provider id,
+	 * not <code>null</code>;
+	 * @return {@link Document} of XForm which is processed and 
+	 * filled with values;
+	 * @throws NullPointerException when request, document id, service provider 
+	 * id not found not found.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
+	public GetDocumentResponseE getDocument(GetDocumentE documentE) {
+		if (documentE == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					GetDocumentE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+				
+		GetDocument document = documentE.getGetDocument();
+		if (document == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					GetDocument.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
 
-	public net.x_rd.ee.ehubservice.producer.GetDocumentResponseE getDocument(
-			net.x_rd.ee.ehubservice.producer.GetDocumentE getDocument86) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException("Please implement "
-				+ this.getClass().getName() + "#getDocument");
+		GetDocumentRequest request = document.getRequest();
+		if (request == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					GetDocumentRequest.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+		
+		String serviceProviderId = request.getServiceProviderId();
+		if (StringUtil.isEmpty(serviceProviderId)) {
+			throw new java.lang.NullPointerException("No provider id is given, " +
+					"nothing to return.");
+		}
+		
+		String documentID = request.getDocumentId();
+		if (StringUtil.isEmpty(documentID)) {
+			throw new java.lang.NullPointerException("No document id is given, " +
+					"nothing to return.");
+		}
+		
+		Document documentNode = getXFormService().getLoadedXFormDocument(documentID);
+		if (documentNode == null) {
+			throw new java.lang.NullPointerException(
+					"No document by given ID: " + documentID + " found!");
+		}
+		
+		byte[] documentBytes = XmlUtil.getBytes(documentNode);
+		if (documentBytes == null) {
+			throw new java.lang.NullPointerException(
+					"Failed to convert " + Document.class + 
+					" of XForm to byte array! Report this to martynas@idega.is!");
+		}
+		
+		DataSource documentSource = new ByteArrayDataSource(
+				documentBytes, 
+				MimeTypeUtil.MIME_TYPE_XML);
+		
+		Document documentNodeTemplate = getXFormService().getXFormTemplate(documentID);
+		if (documentNodeTemplate == null) {
+			throw new java.lang.NullPointerException(
+					"No document template by given ID: " + documentID + " found!");
+		}
+		
+		byte[] documentTemplateBytes = XmlUtil.getBytes(documentNodeTemplate);
+		if (documentTemplateBytes == null) {
+			throw new java.lang.NullPointerException(
+					"Failed to convert " + Document.class + 
+					" of XForm to byte array! Report this to martynas@idega.is!");
+		}
+		
+		DataSource documentTemplateSource = new ByteArrayDataSource(
+				documentTemplateBytes, 
+				MimeTypeUtil.MIME_TYPE_XML);
+		
+		Response_type6 response = new Response_type6();
+		response.setDocument(new DataHandler(documentSource));
+		response.setXFormsTemplate(new DataHandler(documentTemplateSource));
+		
+		GetDocumentResponse documentResponse = new GetDocumentResponse();
+		documentResponse.setResponse(response);
+		documentResponse.setRequest(request);
+		
+		GetDocumentResponseE documentResponseE = new GetDocumentResponseE();
+		documentResponseE.setGetDocumentResponse(documentResponse);
+
+		return documentResponseE;
 	}
 
 	/**
@@ -534,6 +622,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		
 		GetMessagesListResponse messagesListResponse = new GetMessagesListResponse();
 		messagesListResponse.setResponse(response);
+		messagesListResponse.setRequest(request);
 		
 		GetMessagesListResponseE messagesListResponseE = new GetMessagesListResponseE();
 		messagesListResponseE.setGetMessagesListResponse(messagesListResponse);

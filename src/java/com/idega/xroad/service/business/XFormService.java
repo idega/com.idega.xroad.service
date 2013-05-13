@@ -82,7 +82,12 @@
  */
 package com.idega.xroad.service.business;
 
+import java.util.Collections;
 import java.util.Map;
+
+import org.w3c.dom.Document;
+
+import com.idega.block.form.data.XForm;
 
 /**
  * <p>Services for X-Road connected to XForms.</p>
@@ -98,12 +103,30 @@ public interface XFormService {
 
 	/**
 	 * 
-	 * <p>TODO</p>
-	 * @param xFormID
-	 * @param language
-	 * @return
+	 * @param xFormID - {@link XForm#getFormId()}, not <code>null</code>;
+	 * @param language in which form labels should be provided,
+	 * gives current language, when <code>null</code> is provided;
+	 * @return pairs of xform label tag and it's value or 
+	 * {@link Collections#emptyMap()} on failure.
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public Map<String, String> getXFormLabels(String xFormID, String language);
-	
+
+	/**
+	 * 
+	 * <p>Processes XForm before returns.</p>
+	 * @param xFormID - {@link XForm#getFormId()}, not <code>null</code>;
+	 * @return processed {@link XForm}, which should be passed to XSLT 
+	 * transformation to get wanted result or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getLoadedXFormDocument(String xFormID);
+
+	/**
+	 * 
+	 * @param xFormID - {@link XForm#getFormId()}, not <code>null</code>;
+	 * @return empty {@link XForm} or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getXFormTemplate(String xFormID);
 }

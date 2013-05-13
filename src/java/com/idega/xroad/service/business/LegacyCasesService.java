@@ -206,7 +206,12 @@ public class LegacyCasesService extends CasesService {
 			return CoreConstants.EMPTY;
 		}
 		
-		return theCase.getHandler().getName();
+		Group handlerGroup = theCase.getHandler();
+		if (handlerGroup == null) {
+			return CoreConstants.EMPTY;
+		}
+		
+		return handlerGroup.getName();
 	}
 
 	@Override
