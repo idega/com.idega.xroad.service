@@ -63,6 +63,7 @@ import net.x_rd.ee.ehubservice.producer.Response_type6;
 import net.x_rd.ee.ehubservice.producer.Response_type8;
 import net.x_rd.ee.ehubservice.producer.ServiceEntry_type0;
 
+import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
@@ -71,10 +72,12 @@ import org.w3c.dom.Document;
 
 import com.idega.block.form.data.XForm;
 import com.idega.block.process.data.Case;
+import com.idega.core.accesscontrol.business.LoginBusinessBean;
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.core.file.util.MimeTypeUtil;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWMainApplicationSettings;
+import com.idega.presentation.IWContext;
 import com.idega.user.data.User;
 import com.idega.util.CoreConstants;
 import com.idega.util.CoreUtil;
@@ -379,7 +382,8 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 
 	/**
 	 * 
-	 * @param documentE - request with document id and service provider id,
+	 * @param documentE - request with document id, 
+	 * which is {@link TaskInstance#getId()} and service provider id,
 	 * not <code>null</code>;
 	 * @return {@link Document} of XForm which is processed and 
 	 * filled with values;
@@ -419,12 +423,50 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			throw new java.lang.NullPointerException("No document id is given, " +
 					"nothing to return.");
 		}
+
+		IWContext iwc = CoreUtil.getIWContext();
+		if (iwc == null) {
+			throw new java.lang.NullPointerException(
+					"Unable to get " + IWContext.class +
+					"no documents will be found. " +
+					"Report this to martynas@idega.is!");
+		}
 		
-		Document documentNode = getXFormService().getLoadedXFormDocument(documentID);
+		User administrator = null;
+		try {
+			administrator = iwc.getAccessController().getAdministratorUser();
+		} catch (Exception e1) {
+			throw new java.lang.NullPointerException(
+					"Unable to get administrator access, " +
+					"no documents will be found. " +
+					"Report this to martynas@idega.is!");
+		}
+		
+		try {
+			LoginBusinessBean.getDefaultLoginBusinessBean()
+				.logInByUUID(iwc.getRequest(), administrator.getUniqueId());
+		} catch (Exception e1) {
+			throw new java.lang.NullPointerException(
+					"Unable to login administrator user, " +
+					"no documents will be found. " +
+					"Report this to martynas@idega.is!");
+		}
+		
+		Document documentNode = getXFormService().getProcessedXFormDocument(
+				Long.valueOf(documentID));
 		if (documentNode == null) {
 			throw new java.lang.NullPointerException(
 					"No document by given ID: " + documentID + " found!");
 		}
+		
+		Document documentNodeTemplate = getXFormService().getXFormTemplate(
+				Long.valueOf(documentID));
+		if (documentNodeTemplate == null) {
+			throw new java.lang.NullPointerException(
+					"No document template by given ID: " + documentID + " found!");
+		}
+		
+		LoginBusinessBean.getDefaultLoginBusinessBean().logOutUser(iwc);
 		
 		byte[] documentBytes = XmlUtil.getBytes(documentNode);
 		if (documentBytes == null) {
@@ -433,22 +475,16 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 					" of XForm to byte array! Report this to martynas@idega.is!");
 		}
 		
-		DataSource documentSource = new ByteArrayDataSource(
-				documentBytes, 
-				MimeTypeUtil.MIME_TYPE_XML);
-		
-		Document documentNodeTemplate = getXFormService().getXFormTemplate(documentID);
-		if (documentNodeTemplate == null) {
-			throw new java.lang.NullPointerException(
-					"No document template by given ID: " + documentID + " found!");
-		}
-		
 		byte[] documentTemplateBytes = XmlUtil.getBytes(documentNodeTemplate);
 		if (documentTemplateBytes == null) {
 			throw new java.lang.NullPointerException(
 					"Failed to convert " + Document.class + 
 					" of XForm to byte array! Report this to martynas@idega.is!");
 		}
+		
+		DataSource documentSource = new ByteArrayDataSource(
+				documentBytes, 
+				MimeTypeUtil.MIME_TYPE_XML);
 		
 		DataSource documentTemplateSource = new ByteArrayDataSource(
 				documentTemplateBytes, 

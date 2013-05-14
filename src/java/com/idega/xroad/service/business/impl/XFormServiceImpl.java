@@ -89,9 +89,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
-import javax.faces.context.FacesContext;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.chiba.web.IWBundleStarter;
@@ -102,6 +99,7 @@ import org.chiba.web.session.impl.DefaultXFormsSessionManagerImpl;
 import org.chiba.xml.xforms.XFormsConstants;
 import org.chiba.xml.xforms.config.XFormsConfigException;
 import org.chiba.xml.xforms.exception.XFormsException;
+import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
@@ -110,10 +108,14 @@ import org.w3c.dom.Node;
 
 import com.idega.block.form.data.XForm;
 import com.idega.block.form.data.dao.XFormsDAO;
+import com.idega.bpm.xformsview.XFormsView;
 import com.idega.chiba.web.session.impl.IdegaXFormSessionManagerImpl;
 import com.idega.chiba.web.upload.XFormTmpFileResolverImpl;
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.idegaweb.IWBundle;
+import com.idega.jbpm.exe.BPMFactory;
+import com.idega.jbpm.exe.TaskInstanceW;
+import com.idega.jbpm.view.View;
 import com.idega.presentation.IWContext;
 import com.idega.util.CoreUtil;
 import com.idega.util.ListUtil;
@@ -141,31 +143,229 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 
 	@Autowired
 	private DocumentManagerFactory documentManagerFactory;
+	
+	@Autowired
+	private BPMFactory bpmFactory;
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.idega.xroad.service.business.XFormService#getXFormTemplate(java.lang.String)
-	 */
-	@Override
-	public org.w3c.dom.Document getXFormTemplate(String xFormID) {
-		if (StringUtil.isEmpty(xFormID)) {
+	protected BPMFactory getBPMFactory() {
+		if (this.bpmFactory == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return this.bpmFactory;
+	}
+	
+	protected DocumentManagerFactory getDocumentManagerFactory() {
+		if (this.documentManagerFactory == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return this.documentManagerFactory;
+	}
+	
+	protected XFormsSessionManager getXFormsSessionManager(
+			HttpSession session) throws XFormsConfigException {
+		if (session == null) {
 			return null;
 		}
 		
-		return getXFormsDocument(getXForm(xFormID));
+		XFormsSessionManager manager = (XFormsSessionManager) session
+				.getAttribute(XFormsSessionManager.XFORMS_SESSION_MANAGER);
+		if (manager == null) {
+			manager = DefaultXFormsSessionManagerImpl.createXFormsSessionManager(
+					IdegaXFormSessionManagerImpl.class.getName());
+			session.setAttribute(
+					XFormsSessionManager.XFORMS_SESSION_MANAGER, manager);
+		}
+
+		return manager;
 	}
 	
+	protected XFormsDAO getXFormsDAO() {
+		if (this.xFormsDAO == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return this.xFormsDAO;
+	}
+
+	/**
+	 * 
+	 * <p>Instantiates chiba:data tags in XForm and prepares it to be translated
+	 * with XSLT transformation.</p>
+	 * @param xFormDocument is {@link org.w3c.dom.Document} found by 
+	 * {@link XForm#getFormId()}, not <code>null</code>;
+	 * @return translated XForm document or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public org.w3c.dom.Document getInstantiatedXFormsDocument(
+			org.w3c.dom.Document xFormDocument) {		
+		if (xFormDocument == null) {
+			return null;
+		}
+		
+		IWContext iwc = CoreUtil.getIWContext();
+		HttpSession session = iwc.getSession();
+		
+		XFormsSessionManager sessionManager = null;
+		XFormsSession xformsSession = null;
+		WebAdapter adapter = null;
+		
+		try {
+			sessionManager = getXFormsSessionManager(session);
+		} catch (XFormsConfigException e) {
+			getLogger().log(Level.WARNING, "Unable to get " + 
+					XFormsSessionManager.class + " cause of: ", e);
+		}
+		
+		try {
+			xformsSession = sessionManager.createXFormsSession(
+					iwc.getRequest(), iwc.getResponse(), session);
+			adapter = xformsSession.getAdapter();
+			setupAdapter(adapter, xFormDocument, xformsSession);
+			adapter.init();
+			return ((org.w3c.dom.Document) adapter.getXForms());
+		} catch (XFormsException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to get instantiated XForm document", e);
+		}
+		
+		return null;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getProcessedXFormDocument(long)
+	 */
+	@Override
+	public org.w3c.dom.Document getProcessedXFormDocument(long taskInstanceID) {
+		TaskInstanceW taskInstance = getBPMFactory().getTaskInstanceW(taskInstanceID);
+		if (taskInstance == null) {
+			return null;
+		}
+		
+		return getInstantiatedXFormsDocument(
+				getProcessedXFormDocument(taskInstance));
+	}
+
 	/*
 	 * (non-Javadoc)
 	 * @see com.idega.xroad.service.business.XFormService#getLoadedXFormDocument(java.lang.String)
 	 */
 	@Override
-	public org.w3c.dom.Document getLoadedXFormDocument(	String xFormID) {
+	public org.w3c.dom.Document getProcessedXFormDocument(String xFormID) {
 		if (StringUtil.isEmpty(xFormID)) {
 			return null;
 		}
 		
-		return getInstantiatedXFormsDocument(getXForm(xFormID));
+		return getInstantiatedXFormsDocument(getXFormTemplate(xFormID));
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getProcessedXFormDocument(com.idega.jbpm.exe.TaskInstanceW)
+	 */
+	@Override
+	public org.w3c.dom.Document getProcessedXFormDocument(TaskInstanceW taskInstance) {
+		if (taskInstance == null) {
+			return null;
+		}
+		
+		View view = taskInstance.loadView();
+		if (!(view instanceof XFormsView)) {
+			return null;
+		}
+
+		com.idega.xformsmanager.business.Document formDocument = ((XFormsView) view)
+				.getFormDocumentWithData();
+		if (formDocument == null) {
+			return null;
+		}
+		
+		org.w3c.dom.Document document = formDocument.getXformsDocument();
+		if (document == null) {
+			return null;
+		}
+		
+		return document;
+	}
+	
+	/**
+	 * 
+	 * <p>Fetches {@link XForm} entity from data source.</p>
+	 * @param xFormID is {@link XForm#getFormId()}, not <code>null</code>;
+	 * @return fetched {@link XForm} or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	protected XForm getXForm(String xFormID) {
+		if (StringUtil.isEmpty(xFormID)) {
+			return null;
+		}
+		
+		return getXFormsDAO().getXFormById(Long.valueOf(xFormID));
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getXFormLabels(long, java.lang.String)
+	 */
+	@Override
+	public Map<String, String> getXFormLabels(long taskInstanceID,
+			String language) {		
+		View view = getXFormTemplateView(taskInstanceID);
+		if (view == null) {
+			return null;
+		}
+		
+		if (view instanceof XFormsView) {
+			return getXFormLabels(
+					((XFormsView) view).getFormDocument().getXformsDocument(), 
+					language);
+		}
+		
+		return getXFormLabels(view.getViewId(), language);
+	}
+
+	/**
+	 * 
+	 * <p>Reads tags in "localized_strings" tag, which has lang attribute
+	 * equal to given language or current language, when language not given.</p>
+	 * @param xFormDocument is {@link org.w3c.dom.Document} found by 
+	 * {@link XForm#getFormId()}, not <code>null</code>;
+	 * @param language to get tag values translated to, when <code>null</code>
+	 * tags of system language will be returned.
+	 * @return {@link Map} where key is tag name and value is text value of 
+	 * tag or {@link Collections#emptyMap()} on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	protected Map<String, String> getXFormLabels(
+			org.w3c.dom.Document xFormDocument, String language) {
+		if (xFormDocument == null) {
+			return Collections.emptyMap();
+		}
+		
+		/* Selecting node localized_strings */
+		List<Node> localizedStringsNodes = XmlUtil.getChildNodes(
+				xFormDocument.getDocumentElement(), 
+				null, "localized_strings", null, null);
+		if (ListUtil.isEmpty(localizedStringsNodes) || localizedStringsNodes.size() > 1) {
+			return Collections.emptyMap();
+		}
+		
+		/* Selecting all nodes with lang attribute from localized_strings node */
+		List<Node> requiredNodes = XmlUtil.getChildNodes(
+				localizedStringsNodes.get(0).getOwnerDocument().getDocumentElement(), 
+				null, null, "lang", language);
+		if (ListUtil.isEmpty(requiredNodes)) {
+			return Collections.emptyMap();
+		}
+		
+		Map<String, String> labels = new TreeMap<String, String>();
+		for (Node requiredNode : requiredNodes) {
+			labels.put(requiredNode.getNodeName(), requiredNode.getTextContent());
+		}
+		
+		return labels;
 	}
 	
 	/*
@@ -182,43 +382,30 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 			language = getCurrentLocale().getLanguage();
 		}
 		
-		org.w3c.dom.Document document = getXFormsDocument(getXForm(xFormID));
+		org.w3c.dom.Document document = getXFormTemplate(xFormID);
 		if (document == null) {
 			return Collections.emptyMap();
 		}
 		
-		List<Node> localizedStringsNodes = XmlUtil.getChildNodes(
-				document.getDocumentElement(), 
-				null, "localized_strings", null, null);
-		if (ListUtil.isEmpty(localizedStringsNodes) || localizedStringsNodes.size() > 1) {
-			return Collections.emptyMap();
-		}
-		
-		List<Node> requiredNodes = XmlUtil.getChildNodes(
-				localizedStringsNodes.get(0).getOwnerDocument().getDocumentElement(), 
-				null, null, "lang", language);
-		if (ListUtil.isEmpty(requiredNodes)) {
-			return Collections.emptyMap();
-		}
-		
-		Map<String, String> labels = new TreeMap<String, String>();
-		for (Node requiredNode : requiredNodes) {
-			labels.put(requiredNode.getNodeName(), requiredNode.getTextContent());
-		}
-		
-		return labels;
+		return getXFormLabels(document, language);
 	}
 	
-	protected XForm getXForm(String xForm) {
-		if (StringUtil.isEmpty(xForm)) {
-			return null;
-		}
-		
-		return getXFormsDAO().getXFormById(Long.valueOf(xForm));
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getXFormTemplate(long)
+	 */
+	@Override
+	public org.w3c.dom.Document getXFormTemplate(long taskInstanceID) {	
+		return getXFormTemplate(getBPMFactory().getTaskInstanceW(taskInstanceID));
 	}
 	
-	protected org.w3c.dom.Document getXFormsDocument(XForm xForm) {
-		if (xForm == null) {
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getXFormTemplate(java.lang.String)
+	 */
+	@Override
+	public org.w3c.dom.Document getXFormTemplate(String xFormID) {
+		if (StringUtil.isEmpty(xFormID)) {
 			return null;
 		}
 		
@@ -228,8 +415,7 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 			return null;
 		}
 		
-		Document document = documentmanagerLocal.openFormLazy(
-				xForm.getFormId());
+		Document document = documentmanagerLocal.openFormLazy(Long.valueOf(xFormID));
 		if (document == null) {
 			return null;
 		}
@@ -237,58 +423,77 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 		return document.getXformsDocument();
 	}
 	
-	protected org.w3c.dom.Document getInstantiatedXFormsDocument(XForm xForm) {
-		org.w3c.dom.Document document = getXFormsDocument(xForm);
-		
-		IWContext iwc = CoreUtil.getIWContext();
-		
-		HttpServletRequest request = iwc.getRequest();
-		HttpServletResponse response = iwc.getResponse();
-		HttpSession session = iwc.getSession();
-		
-		XFormsSessionManager sessionManager = null;
-		XFormsSession xformsSession = null;
-		WebAdapter adapter = null;
-		
-		try {
-			sessionManager = getXFormsSessionManager(session);
-		} catch (XFormsConfigException e) {
-			getLogger().log(Level.WARNING, "Unable to get " + 
-					XFormsSessionManager.class + " cause of: ", e);
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getXFormTemplate(com.idega.jbpm.exe.TaskInstanceW)
+	 */
+	@Override
+	public org.w3c.dom.Document getXFormTemplate(TaskInstanceW taskInstanceW) {
+		if (taskInstanceW == null) {
+			return null;
 		}
 		
-		try {
-			xformsSession = sessionManager
-					.createXFormsSession(request, response, session);
-			adapter = xformsSession.getAdapter();
-			setupAdapter(adapter, document, xformsSession, iwc);
-			adapter.init();
-			return ((org.w3c.dom.Document) adapter.getXForms());
-		} catch (XFormsException e) {
-			getLogger().log(Level.WARNING, 
-					"Unable to get instantiated XForm document", e);
-		}
-		
-		return null;
+		return getXFormTemplate(getXFormTemplateView(taskInstanceW));
 	}
-	
-	protected XFormsSessionManager getXFormsSessionManager(
-			HttpSession session) throws XFormsConfigException {
-		XFormsSessionManager manager = (XFormsSessionManager) session
-				.getAttribute(XFormsSessionManager.XFORMS_SESSION_MANAGER);
-		if (manager == null) {
-			manager = DefaultXFormsSessionManagerImpl.createXFormsSessionManager(
-					IdegaXFormSessionManagerImpl.class.getName());
-			session.setAttribute(
-					XFormsSessionManager.XFORMS_SESSION_MANAGER, manager);
-		}
 
-		return manager;
+	/**
+	 * 
+	 * <p>Loads empty XForm document from view.</p>
+	 * @param view which is not instantiated, not <code>null</code>;
+	 * @return empty XForm document or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	protected org.w3c.dom.Document getXFormTemplate(View view) {
+		if (view == null) {
+			return null;
+		}
+		
+		if (view instanceof XFormsView) {
+			return 	((XFormsView) view).getFormDocument().getXformsDocument();
+		}
+		
+		return getXFormTemplate(view.getViewId());
 	}
 	
-	protected void setupAdapter(WebAdapter adapter, 
-			org.w3c.dom.Document document, XFormsSession xformsSession, 
-			FacesContext context) throws XFormsException {
+	/**
+	 * 
+	 * <p>Loads empty XForms document by given criteria.</p>
+	 * @param taskInstanceID - {@link TaskInstance#getId()}, 
+	 * which document should be loaded;
+	 * @return empty {@link XForm} {@link View} or <code>null</code>
+	 * on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	protected View getXFormTemplateView(long taskInstanceID) {
+		return getXFormTemplateView(getBPMFactory().getTaskInstanceW(taskInstanceID));
+	}
+	
+	/**
+	 * 
+	 * <p>Loads empty XForms document by given criteria.</p>
+	 * @param taskInstance which document should be loaded;
+	 * @return empty {@link XForm} {@link View} or <code>null</code>
+	 * on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	protected View getXFormTemplateView(TaskInstanceW taskInstance) {
+		if (taskInstance == null) {
+			return null;
+		}
+		
+		return taskInstance.getView();
+	}
+
+	protected void setupAdapter(
+			WebAdapter adapter, 
+			org.w3c.dom.Document document, 
+			XFormsSession xformsSession) throws XFormsException {
+		if (adapter == null || xformsSession == null || document == null) {
+			return;
+		}
+		
+		document.normalizeDocument();
+		
 		adapter.setXFormsSession(xformsSession);
 		adapter.setXForms(document);
 
@@ -301,21 +506,5 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 		adapter.setBaseURI(bundle.getResourcesVirtualPath());
 		adapter.setUploadDestination(XFormTmpFileResolverImpl.UPLOADS_PATH);
 		// storeCookies(request, adapter);
-	}
-	
-	protected XFormsDAO getXFormsDAO() {
-		if (this.xFormsDAO == null) {
-			ELUtil.getInstance().autowire(this);
-		}
-		
-		return this.xFormsDAO;
-	}
-	
-	protected DocumentManagerFactory getDocumentManagerFactory() {
-		if (this.documentManagerFactory == null) {
-			ELUtil.getInstance().autowire(this);
-		}
-		
-		return this.documentManagerFactory;
 	}
 }

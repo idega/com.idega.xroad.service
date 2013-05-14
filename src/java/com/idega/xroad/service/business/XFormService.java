@@ -85,9 +85,11 @@ package com.idega.xroad.service.business;
 import java.util.Collections;
 import java.util.Map;
 
+import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.w3c.dom.Document;
 
 import com.idega.block.form.data.XForm;
+import com.idega.jbpm.exe.TaskInstanceW;
 
 /**
  * <p>Services for X-Road connected to XForms.</p>
@@ -103,30 +105,91 @@ public interface XFormService {
 
 	/**
 	 * 
-	 * @param xFormID - {@link XForm#getFormId()}, not <code>null</code>;
-	 * @param language in which form labels should be provided,
-	 * gives current language, when <code>null</code> is provided;
-	 * @return pairs of xform label tag and it's value or 
-	 * {@link Collections#emptyMap()} on failure.
+	 * <p>Prepares {@link XForm} document to be transformed with
+	 * XSLT transformation and puts all variable values to it.</p>
+	 * @param taskInstanceID is {@link TaskInstance#getId()} by which 
+	 * {@link XForm} {@link Document} should be taken, not <code>null</code>;
+	 * @return processed {@link XForm}, which should be passed to XSLT 
+	 * transformation to get HTML {@link Document} or 
+	 * <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getProcessedXFormDocument(long taskInstanceID);
+
+	/**
+	 * 
+	 * <p>Prepares {@link XForm} document to be transformed with
+	 * XSLT transformation and puts all variable values to it.</p>
+	 * @param xFormID is {@link XForm#getFormId()}, not <code>null</code>;
+	 * @return processed {@link XForm}, which should be passed to XSLT 
+	 * transformation to get HTML {@link Document} or 
+	 * <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getProcessedXFormDocument(String xFormID);
+	
+	/**
+	 * 
+	 * <p>Prepares {@link XForm} document to be transformed with
+	 * XSLT transformation and puts all variable values to it.</p>
+	 * @param taskInstance by which {@link XForm} {@link Document} should be 
+	 * taken, not <code>null</code>;
+	 * @return processed {@link XForm}, which should be passed to XSLT 
+	 * transformation to get HTML {@link Document} or 
+	 * <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getProcessedXFormDocument(TaskInstanceW taskInstance);
+	
+	/**
+	 * <p>Reads tags in "localized_strings" tag, which has lang attribute
+	 * equal to given language or current language, when language not given.</p>
+	 * @param taskInstanceID is {@link TaskInstance#getId()} by which 
+	 * {@link XForm} {@link Document} should be taken, not <code>null</code>;
+	 * @param language to get tag values translated to, when <code>null</code>
+	 * tags of system language will be returned.
+	 * @return {@link Map} where key is tag name and value is text value of 
+	 * tag or {@link Collections#emptyMap()} on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Map<String, String> getXFormLabels(long taskInstanceID, String language);
+
+	/**
+	 * <p>Reads tags in "localized_strings" tag, which has lang attribute
+	 * equal to given language or current language, when language not given.</p>
+	 * @param xFormID is {@link XForm#getFormId()}, not <code>null</code>;
+	 * @param language to get tag values translated to, when <code>null</code>
+	 * tags of system language will be returned.
+	 * @return {@link Map} where key is tag name and value is text value of 
+	 * tag or {@link Collections#emptyMap()} on failure;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public Map<String, String> getXFormLabels(String xFormID, String language);
 
 	/**
-	 * 
-	 * <p>Processes XForm before returns.</p>
-	 * @param xFormID - {@link XForm#getFormId()}, not <code>null</code>;
-	 * @return processed {@link XForm}, which should be passed to XSLT 
-	 * transformation to get wanted result or <code>null</code> on failure;
+	 * <p>Loads empty {@link XForm} {@link Document}.</p>
+	 * @param taskInstanceID is {@link TaskInstance#getId()} by which 
+	 * {@link XForm} {@link Document} should be taken, not <code>null</code>;
+	 * @return empty {@link XForm} or <code>null</code> on failure;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
-	public Document getLoadedXFormDocument(String xFormID);
+	public Document getXFormTemplate(long taskInstanceID);
 
 	/**
-	 * 
-	 * @param xFormID - {@link XForm#getFormId()}, not <code>null</code>;
+	 * <p>Loads empty {@link XForm} {@link Document}.</p>
+	 * @param xFormID is {@link XForm#getFormId()} of form to load,
+	 * not <code>null</code>;
 	 * @return empty {@link XForm} or <code>null</code> on failure;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public Document getXFormTemplate(String xFormID);
+
+	/**
+	 * <p>Loads empty {@link XForm} {@link Document}.</p>
+	 * @param taskInstance by which {@link XForm} {@link Document} should be 
+	 * taken, not <code>null</code>;
+	 * @return empty {@link XForm} or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getXFormTemplate(TaskInstanceW taskInstanceW);
 }
