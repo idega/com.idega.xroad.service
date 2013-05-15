@@ -82,14 +82,19 @@
  */
 package com.idega.xroad.service.business;
 
+import is.idega.idegaweb.egov.application.data.Application;
+
 import java.util.Collections;
 import java.util.Map;
 
+import org.jbpm.graph.exe.ProcessInstance;
+import org.jbpm.taskmgmt.def.Task;
 import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.w3c.dom.Document;
 
 import com.idega.block.form.data.XForm;
 import com.idega.jbpm.exe.TaskInstanceW;
+import com.idega.user.data.User;
 
 /**
  * <p>Services for X-Road connected to XForms.</p>
@@ -103,6 +108,39 @@ public interface XFormService {
 	
 	public static final String BEAN_NAME = "xFormService";
 
+	/**
+	 * 
+	 * @param personalID -  {@link User#getPersonalID()}, not <code>null</code>;
+	 * @param applicationID -  {@link Application#getPrimaryKey()}, not 
+	 * <code>null</code>;
+	 * @param taskID - is {@link TaskInstance#getId()}, if <code>null</code>
+	 * then new {@link ProcessInstance} will be created and first task will 
+	 * be returned;
+	 * @param language the form should be translated to, if <code>null</code>
+	 * the {@link Document} in default language is returned.
+	 * @return {@link XForm} {@link Document} filled with data from 
+	 * {@link com.idega.user.data.User}
+	 * and prepared for XSLT transformation or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getPrefilledDocument(
+			String personalID, 
+			String applicationID, 
+			String taskID, 
+			String language);
+
+	/**
+	 * 
+	 * @param taskID is {@link TaskInstance#getId()}, not <code>null</code>;
+	 * @param language the form should be translated to, if <code>null</code>
+	 * the {@link Document} in default language is returned.
+	 * @return filled {@link Document} of {@link Task} by 
+	 * {@link TaskInstance#getId()} which ir prepared for XSLT transformation
+	 * or <code>null</code> on failure;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Document getPrefilledDocument(String taskID, String language);
+	
 	/**
 	 * 
 	 * <p>Prepares {@link XForm} document to be transformed with

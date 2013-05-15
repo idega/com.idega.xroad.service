@@ -82,6 +82,11 @@
  */
 package com.idega.xroad.service.business.impl;
 
+import is.idega.idegaweb.egov.application.business.ApplicationBusiness;
+import is.idega.idegaweb.egov.application.data.Application;
+import is.idega.idegaweb.egov.bpm.cases.manager.BPMCasesRetrievalManagerImpl;
+
+import java.rmi.RemoteException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -89,6 +94,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import javax.ejb.FinderException;
 import javax.servlet.http.HttpSession;
 
 import org.chiba.web.IWBundleStarter;
@@ -101,6 +107,7 @@ import org.chiba.xml.xforms.config.XFormsConfigException;
 import org.chiba.xml.xforms.exception.XFormsException;
 import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -108,15 +115,23 @@ import org.w3c.dom.Node;
 
 import com.idega.block.form.data.XForm;
 import com.idega.block.form.data.dao.XFormsDAO;
+import com.idega.block.process.business.CasesRetrievalManager;
+import com.idega.block.process.data.Case;
 import com.idega.bpm.xformsview.XFormsView;
+import com.idega.business.IBOLookup;
+import com.idega.business.IBOLookupException;
 import com.idega.chiba.web.session.impl.IdegaXFormSessionManagerImpl;
 import com.idega.chiba.web.upload.XFormTmpFileResolverImpl;
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.idegaweb.IWBundle;
 import com.idega.jbpm.exe.BPMFactory;
+import com.idega.jbpm.exe.ProcessDefinitionW;
+import com.idega.jbpm.exe.ProcessManager;
 import com.idega.jbpm.exe.TaskInstanceW;
 import com.idega.jbpm.view.View;
 import com.idega.presentation.IWContext;
+import com.idega.user.business.UserBusiness;
+import com.idega.user.data.User;
 import com.idega.util.CoreUtil;
 import com.idega.util.ListUtil;
 import com.idega.util.StringUtil;
@@ -138,6 +153,10 @@ import com.idega.xroad.service.business.XFormService;
 @Scope(BeanDefinition.SCOPE_SINGLETON)
 public class XFormServiceImpl extends DefaultSpringBean implements XFormService {
 
+	private ApplicationBusiness applicationBusiness = null;
+	
+	private UserBusiness userBusiness = null;
+	
 	@Autowired
 	private XFormsDAO xFormsDAO;
 
@@ -147,6 +166,10 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 	@Autowired
 	private BPMFactory bpmFactory;
 
+	@Autowired
+	@Qualifier(BPMCasesRetrievalManagerImpl.beanIdentifier)
+	private CasesRetrievalManager casesRetrievalManager;
+	
 	protected BPMFactory getBPMFactory() {
 		if (this.bpmFactory == null) {
 			ELUtil.getInstance().autowire(this);
@@ -198,7 +221,7 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 	 * @return translated XForm document or <code>null</code> on failure;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
-	public org.w3c.dom.Document getInstantiatedXFormsDocument(
+	protected org.w3c.dom.Document getInstantiatedXFormsDocument(
 			org.w3c.dom.Document xFormDocument) {		
 		if (xFormDocument == null) {
 			return null;
@@ -233,6 +256,71 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 		return null;
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getPrefilledDocument(java.lang.String, java.lang.String, java.lang.String)
+	 */
+	@Override
+	public org.w3c.dom.Document getPrefilledDocument(
+			String personalID, 
+			String applicationID,
+			String taskID, 
+			String language) {
+		if (!StringUtil.isEmpty(taskID)) {
+			return getPrefilledDocument(taskID, language);
+		}
+		
+		Application application = getApplication(applicationID);
+		if (application == null) {
+			return null;
+		}
+		
+		User creator = getUser(personalID);
+		if (creator == null) {
+			return null;
+		}		
+		
+		ProcessDefinitionW processDefinition = getProcessDefinition(application);
+		if (processDefinition == null) {
+			return null;
+		}
+
+		View view = processDefinition.loadInitView(
+				Integer.valueOf(creator.getPrimaryKey().toString()));
+		if (!(view instanceof XFormsView)) {
+			return null;
+		}
+		
+		Document formDocument = ((XFormsView) view).getFormDocumentWithData();
+		if (formDocument == null) {
+			return null;
+		}
+		
+		return getInstantiatedXFormsDocument(formDocument.getXformsDocument());
+	}
+	
+	protected Long getProcessDefinitionId(Application application) {
+		if (application == null) {
+			return null;
+		}
+		
+		return getCasesRetrievalManager()
+				.getLatestProcessDefinitionIdByProcessName(application.getUrl());
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.business.XFormService#getPrefilledDocument(java.lang.String)
+	 */
+	@Override
+	public org.w3c.dom.Document getPrefilledDocument(String taskID, String language) {
+		if (StringUtil.isEmpty(language)) {
+			language = getCurrentLocale().getLanguage();
+		}
+		
+		return getProcessedXFormDocument(Long.valueOf(taskID));
+	}
+	
 	/*
 	 * (non-Javadoc)
 	 * @see com.idega.xroad.service.business.XFormService#getProcessedXFormDocument(long)
@@ -506,5 +594,119 @@ public class XFormServiceImpl extends DefaultSpringBean implements XFormService 
 		adapter.setBaseURI(bundle.getResourcesVirtualPath());
 		adapter.setUploadDestination(XFormTmpFileResolverImpl.UPLOADS_PATH);
 		// storeCookies(request, adapter);
+	}
+
+	protected ApplicationBusiness getApplicationBusiness() {
+		if (this.applicationBusiness != null) {
+			return this.applicationBusiness;
+		}
+
+		try {
+			this.applicationBusiness = IBOLookup.getServiceInstance(
+					CoreUtil.getIWContext(), ApplicationBusiness.class);
+		} catch (IBOLookupException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to get: " + ApplicationBusiness.class + ": ", e);
+		}
+
+		return this.applicationBusiness;
+	}
+	
+	protected Application getApplication(Object applicationID) {
+		try {
+			return getApplicationBusiness().getApplication(applicationID);
+		} catch (RemoteException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to connect to data source: ", e);
+		} catch (FinderException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to find " + Application.class + " by ID: " + 
+							applicationID);
+		}
+		
+		return null;
+	}
+	
+	protected UserBusiness getUserBusiness() {
+		if (this.userBusiness != null) {
+			return this.userBusiness;
+		}
+
+		try {
+			this.userBusiness = IBOLookup.getServiceInstance(
+					CoreUtil.getIWContext(), UserBusiness.class);
+		} catch (IBOLookupException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to get: " + UserBusiness.class + ": ", e);
+		}
+
+		return this.userBusiness;
+	}
+	
+	protected User getUser(String personalId) {
+		if (StringUtil.isEmpty(personalId)) {
+			return null;
+		}
+		
+		try {
+			return getUserBusiness().getUser(personalId);
+		} catch (RemoteException e) {
+			getLogger().log(Level.WARNING, "Unable to connect database: ", e);
+		} catch (FinderException e) {
+			getLogger().log(Level.WARNING, "Unable to find " + User.class + 
+					" by personal id: " + personalId);
+		}
+		
+		return null;
+	}
+	
+	protected CasesRetrievalManager getCasesRetrievalManager() {
+		if (this.casesRetrievalManager == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+		
+		return this.casesRetrievalManager;
+	}
+	
+	protected Long getProcessDefinitionId(Case selectedCase) {
+		if (selectedCase == null) {
+			return null;
+		}
+		
+		return getCasesRetrievalManager().getProcessDefinitionId(selectedCase);
+	}
+	
+	protected ProcessDefinitionW getProcessDefinition(Application application) {
+		if (application == null) {
+			return null;
+		}
+		
+		return getProcessDefinition(getProcessDefinitionId(application));
+	}
+	
+	protected ProcessDefinitionW getProcessDefinition(Case theCase) {
+		if (theCase == null) {
+			return null;
+		}
+		
+		Long processDefinitionId = getProcessDefinitionId(theCase);
+		if (processDefinitionId == null) {
+			return null;
+		}
+		
+		return getProcessDefinition(processDefinitionId);
+	}
+	
+	protected ProcessDefinitionW getProcessDefinition(long processDefinitionId) {
+		ProcessManager manager = getProcessManager(processDefinitionId);
+		if (manager == null) {
+			return null;
+		}
+		
+		return manager.getProcessDefinition(processDefinitionId);
+	}
+	
+	protected ProcessManager getProcessManager(long processDefinitionId) {
+		return getBPMFactory().getProcessManager(processDefinitionId);
 	}
 }

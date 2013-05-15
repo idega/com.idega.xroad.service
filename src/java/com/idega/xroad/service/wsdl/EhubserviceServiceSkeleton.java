@@ -41,6 +41,11 @@ import net.x_rd.ee.ehubservice.producer.GetMessagesListE;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListRequest;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListResponse;
 import net.x_rd.ee.ehubservice.producer.GetMessagesListResponseE;
+import net.x_rd.ee.ehubservice.producer.GetPrefilledDocument;
+import net.x_rd.ee.ehubservice.producer.GetPrefilledDocumentE;
+import net.x_rd.ee.ehubservice.producer.GetPrefilledDocumentRequest;
+import net.x_rd.ee.ehubservice.producer.GetPrefilledDocumentResponse;
+import net.x_rd.ee.ehubservice.producer.GetPrefilledDocumentResponseE;
 import net.x_rd.ee.ehubservice.producer.GetServiceList;
 import net.x_rd.ee.ehubservice.producer.GetServiceListE;
 import net.x_rd.ee.ehubservice.producer.GetServiceListRequest;
@@ -61,7 +66,12 @@ import net.x_rd.ee.ehubservice.producer.Response_type3;
 import net.x_rd.ee.ehubservice.producer.Response_type5;
 import net.x_rd.ee.ehubservice.producer.Response_type6;
 import net.x_rd.ee.ehubservice.producer.Response_type8;
+import net.x_rd.ee.ehubservice.producer.Response_type9;
 import net.x_rd.ee.ehubservice.producer.ServiceEntry_type0;
+import net.x_rd.ee.ehubservice.producer.SubmitDocument;
+import net.x_rd.ee.ehubservice.producer.SubmitDocumentE;
+import net.x_rd.ee.ehubservice.producer.SubmitDocumentRequest;
+import net.x_rd.ee.ehubservice.producer.SubmitDocumentResponseE;
 
 import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -428,8 +438,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		if (iwc == null) {
 			throw new java.lang.NullPointerException(
 					"Unable to get " + IWContext.class +
-					"no documents will be found. " +
-					"Report this to martynas@idega.is!");
+					"no documents will be found. ");
 		}
 		
 		User administrator = null;
@@ -438,8 +447,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		} catch (Exception e1) {
 			throw new java.lang.NullPointerException(
 					"Unable to get administrator access, " +
-					"no documents will be found. " +
-					"Report this to martynas@idega.is!");
+					"no documents will be found. ");
 		}
 		
 		try {
@@ -448,8 +456,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		} catch (Exception e1) {
 			throw new java.lang.NullPointerException(
 					"Unable to login administrator user, " +
-					"no documents will be found. " +
-					"Report this to martynas@idega.is!");
+					"no documents will be found. ");
 		}
 		
 		Document documentNode = getXFormService().getProcessedXFormDocument(
@@ -472,14 +479,14 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		if (documentBytes == null) {
 			throw new java.lang.NullPointerException(
 					"Failed to convert " + Document.class + 
-					" of XForm to byte array! Report this to martynas@idega.is!");
+					" of XForm to byte array!");
 		}
 		
 		byte[] documentTemplateBytes = XmlUtil.getBytes(documentNodeTemplate);
 		if (documentTemplateBytes == null) {
 			throw new java.lang.NullPointerException(
 					"Failed to convert " + Document.class + 
-					" of XForm to byte array! Report this to martynas@idega.is!");
+					" of XForm to byte array!");
 		}
 		
 		DataSource documentSource = new ByteArrayDataSource(
@@ -667,31 +674,166 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	}
 
 	/**
-	 * Auto generated method signature
-	 * 
-	 * @param submitDocument118
-	 * @return submitDocumentResponse125
+	 * TODO
 	 */
+	public SubmitDocumentResponseE submitDocument(SubmitDocumentE submitDocumentE) {
+		if (submitDocumentE == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					SubmitDocumentE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		SubmitDocument submitDocument = submitDocumentE.getSubmitDocument();
+		if (submitDocument == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					SubmitDocument.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
 
-	public net.x_rd.ee.ehubservice.producer.SubmitDocumentResponseE submitDocument(
-			net.x_rd.ee.ehubservice.producer.SubmitDocumentE submitDocument118) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException("Please implement "
-				+ this.getClass().getName() + "#submitDocument");
+		SubmitDocumentRequest request = submitDocument.getRequest();
+		if (request == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					SubmitDocumentRequest.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+
+		String serviceProviderId = request.getServiceId();
+		if (StringUtil.isEmpty(serviceProviderId)) {
+			throw new java.lang.NullPointerException("No provider id is not " +
+					"given. Form won't be subbmitted!");
+		}
+
+		String citizenID = request.getCitizenId();
+		if (StringUtil.isEmpty(citizenID)) {
+			throw new java.lang.NullPointerException("No citizen id is given. " +
+					"Form won't be subbmitted!");
+		}
+
+		String stepID = request.getStepId();
+		if (StringUtil.isEmpty(stepID)) {
+			throw new java.lang.NullPointerException("No citizen id is given. " +
+					"Form won't be subbmitted!");
+		}
+		
+		DataHandler documentHandler = request.getDocument();
+		if (documentHandler == null) {
+			throw new java.lang.NullPointerException("Document not given. " +
+					"Form won't be subbmitted!");
+		}
+		
+		String languageID = request.getLanguageId();
+		
+		
+		return null;
 	}
 
 	/**
-	 * Auto generated method signature
 	 * 
-	 * @param getPrefilledDocument126
-	 * @return getPrefilledDocumentResponse133
+	 * <p>Retrieves {@link Document} of {@link XForm} by stepID filled with
+	 * data found by citizenID and in given language. If stepID not provided
+	 * then new process will be created and first form in process will 
+	 * be returned. If language not provided, then default language will be 
+	 * used.</p>
+	 * @param prefilledDocumentE request with citizenID, serviceID and, 
+	 * if required, language and stepID, not <code>null</code>
+	 * @return {@link Document} of {@link XForm} filled with data by given 
+	 * {@link User#getPersonalID()}.
+	 * @throws NullPointerException when service id or user personal ID is not 
+	 * provided.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
+	public GetPrefilledDocumentResponseE getPrefilledDocument(
+			GetPrefilledDocumentE prefilledDocumentE) {
+		if (prefilledDocumentE == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					GetPrefilledDocumentE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+				
+		GetPrefilledDocument prefilledDocument = prefilledDocumentE.getGetPrefilledDocument();
+		if (prefilledDocument == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					GetPrefilledDocument.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
 
-	public net.x_rd.ee.ehubservice.producer.GetPrefilledDocumentResponseE getPrefilledDocument(
-			net.x_rd.ee.ehubservice.producer.GetPrefilledDocumentE getPrefilledDocument126) {
-		// TODO : fill this with the necessary business logic
-		throw new java.lang.UnsupportedOperationException("Please implement "
-				+ this.getClass().getName() + "#getPrefilledDocument");
+		GetPrefilledDocumentRequest request = prefilledDocument.getRequest();
+		if (request == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					GetPrefilledDocumentRequest.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+		
+		String applicationID = request.getServiceId();
+		if (StringUtil.isEmpty(applicationID)) {
+			throw new java.lang.NullPointerException("No provider id is given, " +
+					"nothing to return.");
+		}
+		
+		String personalID = request.getCitizenId();
+		if (StringUtil.isEmpty(personalID)) {
+			throw new java.lang.NullPointerException("No user personal is given, " +
+					"nothing to return.");
+		}
+		
+		String language = null;
+		LangType languageType = request.getLanguageId();
+		if (languageType != null) {
+			language = languageType.getLangType();
+		}
+		
+		String taskID = request.getStepId();
+		
+		IWContext iwc = CoreUtil.getIWContext();
+		if (iwc == null) {
+			throw new java.lang.NullPointerException(
+					"Failed to get " + IWContext.class);
+		}
+		
+		try {
+			LoginBusinessBean.getDefaultLoginBusinessBean()
+					.logInByPersonalID(iwc, personalID);
+		} catch (Exception e) {
+			throw new java.lang.NullPointerException(
+					"Failed to log on user by personal ID: " + personalID);
+		}
+	
+		if (!iwc.isLoggedOn()) {
+			throw new java.lang.NullPointerException(
+					"You should be logged on to retrieve document!");
+		}
+		
+		Document documentNode = getXFormService().getPrefilledDocument(
+				personalID, applicationID, taskID, language);
+		if (documentNode == null) {
+			throw new java.lang.NullPointerException(
+					"No document created for user by personal ID: " + personalID);
+		}
+		
+		LoginBusinessBean.getDefaultLoginBusinessBean().logOutUser(iwc);
+		
+		byte[] documentBytes = XmlUtil.getBytes(documentNode);
+		if (documentBytes == null) {
+			throw new java.lang.NullPointerException(
+					"Failed to convert " + Document.class + 
+					" of XForm to byte array!");
+		}
+		
+		DataSource documentSource = new ByteArrayDataSource(
+				documentBytes, 
+				MimeTypeUtil.MIME_TYPE_XML);
+		
+		Response_type9 response = new Response_type9();
+		response.setDocument(new DataHandler(documentSource));
+		response.setDocumentType(MimeTypeUtil.MIME_TYPE_XML);
+		
+		GetPrefilledDocumentResponse prefilledDocumentResponse = new GetPrefilledDocumentResponse();
+		prefilledDocumentResponse.setRequest(request);
+		prefilledDocumentResponse.setResponse(response);
+		
+		GetPrefilledDocumentResponseE prefilledDocumentResponseE = new GetPrefilledDocumentResponseE();
+		prefilledDocumentResponseE.setGetPrefilledDocumentResponse(prefilledDocumentResponse);
+		return prefilledDocumentResponseE;
 	}
 
 	protected LabelType getLabelType(String label) {
