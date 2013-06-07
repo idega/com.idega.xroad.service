@@ -1,5 +1,5 @@
 /**
- * @(#)Axis2ExtendedServlet.java    1.0.0 9:08:30 AM
+ * @(#)ApplicationServiceImpl.java    1.0.0 9:02:42 AM
  *
  * Idega Software hf. Source Code Licence Agreement x
  *
@@ -15,7 +15,7 @@
  *     (1) funds have been received for payment of the License for Software and 
  *     (2) the appropriate License has been purchased as stated in the 
  *     documentation for Software. As used in this License Agreement, 
- *     �Licensee� shall also mean the individual using or installing 
+ *     Licensee shall also mean the individual using or installing 
  *     the source code together with any individual or entity, including 
  *     but not limited to your employer, on whose behalf you are acting 
  *     in using or installing the Source Code. By completing this agreement, 
@@ -80,69 +80,146 @@
  *     License that was purchased to become eligible to receive the Source 
  *     Code after Licensee receives the source code. 
  */
-package com.idega.axis2.servlet;
+package com.idega.xroad.service.business.impl;
 
-import java.io.IOException;
-import java.util.Locale;
-import java.util.logging.Logger;
+import is.idega.idegaweb.egov.application.business.ApplicationBusiness;
+import is.idega.idegaweb.egov.application.data.Application;
 
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.rmi.RemoteException;
+import java.util.Collection;
+import java.util.logging.Level;
 
-import org.apache.axis2.transport.http.AxisServlet;
+import javax.ejb.FinderException;
 
-import com.idega.core.localisation.business.ICLocaleBusiness;
-import com.idega.core.localisation.business.LocaleSwitcher;
-import com.idega.presentation.IWContext;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
+
+import com.idega.block.process.data.Case;
+import com.idega.business.IBOLookup;
+import com.idega.business.IBOLookupException;
+import com.idega.core.business.DefaultSpringBean;
+import com.idega.idegaweb.ApplicationInstallationInfo;
+import com.idega.idegaweb.ApplicationInstallationInfo.LicenceOwner;
 import com.idega.util.CoreUtil;
 import com.idega.util.StringUtil;
+import com.idega.xroad.service.business.ApplicationService;
 
 /**
- * <p>TODO</p>
+ * @see ApplicationService
  * <p>You can report about problems to: 
  * <a href="mailto:martynas@idega.is">Martynas Stakė</a></p>
  *
- * @version 1.0.0 Apr 30, 2013
+ * @version 1.0.0 May 10, 2013
  * @author <a href="mailto:martynas@idega.is">Martynas Stakė</a>
  */
-public class Axis2ExtendedServlet extends AxisServlet{
 
-	private static final long serialVersionUID = 1L;
+@Scope(BeanDefinition.SCOPE_SINGLETON)
+@Service(ApplicationService.BEAN_NAME)
+public class ApplicationServiceImpl extends DefaultSpringBean implements ApplicationService {
+	
+	private ApplicationBusiness applicationBusiness = null;
 	
 	@Override
-	public void init() throws ServletException {
-		super.init();
-	}
-
-	@Override
-	protected void doPost(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
-		initializeContext(request, response);
-		super.doPost(request, response);
-	}
-
-	@Override
-	protected void doGet(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
-		initializeContext(request, response);
-		super.doGet(request, response);
-	}
-	
-	private void initializeContext(ServletRequest request, ServletResponse response) {
-		IWContext iwc = CoreUtil.getIWContext();
-		if (iwc == null)
-			iwc = new IWContext((HttpServletRequest) request, (HttpServletResponse) response, getServletContext());
-
-		String localeString = request.getParameter(LocaleSwitcher.languageParameterString);
-		if (!StringUtil.isEmpty(localeString)) {
-			Locale locale = ICLocaleBusiness.getLocaleFromLocaleString(localeString);
-			if (locale == null)
-				Logger.getLogger(getClass().getName()).warning("Unable to resolve locale from provided value: " + localeString);
-			else
-				iwc.setCurrentLocale(locale);
+	public URL getServiceLogoURL(Application service) {
+		ApplicationInstallationInfo installationInfo = getApplication().getInstallationInfo();
+		if (installationInfo == null) {
+			return null;
 		}
+		
+		LicenceOwner licenseOwner = installationInfo.getLicenceOwner();
+		if (licenseOwner == null) {
+			return null;
+		}
+		
+		String url = licenseOwner.getLogoUrl();
+		if (StringUtil.isEmpty(url)) {
+			return null;
+		}
+		
+		try {
+			return new URL(url);
+		} catch (MalformedURLException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to form " + URL.class.getName() + " by: " + url);
+		}
+		
+		return null;
+	}
+	
+	@Override
+	public Collection<Application> getServices() {
+		try {
+			return getApplicationBusiness().getApplicationHome().findAll();
+		} catch (RemoteException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to connect data source:", e);
+		} catch (FinderException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to find " + Application.class.getName(), e);
+		}
+		
+		return null;
+	}
+	
+	@Override
+	public String getServiceDescription(Case theCase) {
+		if (theCase == null) {
+			return null;
+		}
+
+		Application application = getApplication(theCase);
+		if (application == null) {
+			return null;
+		}
+		
+		String name = application.getLocalizedName(getCurrentLocale());
+		if (!StringUtil.isEmpty(name)) {
+			return name;
+		}
+		
+		name = application.getNameByLocale();
+		if (!StringUtil.isEmpty(name)) {
+			return name;
+		}
+		
+		return application.getName();
+	}
+	
+	protected Application getApplication(Case theCase) {
+		if (theCase == null) {
+			return null;
+		}
+		
+		try {
+			return getApplicationBusiness().getApplication(
+					theCase.getCaseCode().getCode());
+		} catch (RemoteException e) {
+			getLogger().log(Level.WARNING, "Unable to connect datasource: ", e);
+		} catch (FinderException e) {
+			getLogger().log(Level.WARNING, "Unable to find " + 
+					Application.class.getName() + " by case: " + 
+					theCase);
+		}
+		
+		return null;
+	}
+	
+	protected ApplicationBusiness getApplicationBusiness() {
+		if (this.applicationBusiness != null) {
+			return this.applicationBusiness;
+		}
+
+		try {
+			this.applicationBusiness = IBOLookup.getServiceInstance(
+					CoreUtil.getIWContext(), ApplicationBusiness.class);
+		} catch (IBOLookupException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to get: " + ApplicationBusiness.class + ": ", e);
+		}
+
+		return this.applicationBusiness;
 	}
 }

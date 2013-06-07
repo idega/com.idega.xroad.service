@@ -1,5 +1,5 @@
 /**
- * @(#)Axis2ExtendedServlet.java    1.0.0 9:08:30 AM
+ * @(#)ApplicationService.java    1.0.0 9:01:54 AM
  *
  * Idega Software hf. Source Code Licence Agreement x
  *
@@ -15,7 +15,7 @@
  *     (1) funds have been received for payment of the License for Software and 
  *     (2) the appropriate License has been purchased as stated in the 
  *     documentation for Software. As used in this License Agreement, 
- *     �Licensee� shall also mean the individual using or installing 
+ *     Licensee shall also mean the individual using or installing 
  *     the source code together with any individual or entity, including 
  *     but not limited to your employer, on whose behalf you are acting 
  *     in using or installing the Source Code. By completing this agreement, 
@@ -80,69 +80,53 @@
  *     License that was purchased to become eligible to receive the Source 
  *     Code after Licensee receives the source code. 
  */
-package com.idega.axis2.servlet;
+package com.idega.xroad.service.business;
 
-import java.io.IOException;
-import java.util.Locale;
-import java.util.logging.Logger;
+import is.idega.idegaweb.egov.application.data.Application;
 
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.net.URL;
+import java.util.Collection;
+import java.util.Collections;
 
-import org.apache.axis2.transport.http.AxisServlet;
-
-import com.idega.core.localisation.business.ICLocaleBusiness;
-import com.idega.core.localisation.business.LocaleSwitcher;
-import com.idega.presentation.IWContext;
-import com.idega.util.CoreUtil;
-import com.idega.util.StringUtil;
+import com.idega.block.process.data.Case;
 
 /**
- * <p>TODO</p>
+ * <p>Interface for communication with {@link Application}s via X-Road.</p>
  * <p>You can report about problems to: 
  * <a href="mailto:martynas@idega.is">Martynas Stakė</a></p>
  *
- * @version 1.0.0 Apr 30, 2013
+ * @version 1.0.0 May 10, 2013
  * @author <a href="mailto:martynas@idega.is">Martynas Stakė</a>
  */
-public class Axis2ExtendedServlet extends AxisServlet{
-
-	private static final long serialVersionUID = 1L;
+public interface ApplicationService {
 	
-	@Override
-	public void init() throws ServletException {
-		super.init();
-	}
+	public static final String BEAN_NAME = "applicationService";
 
-	@Override
-	protected void doPost(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
-		initializeContext(request, response);
-		super.doPost(request, response);
-	}
+	/**
+	 * 
+	 * @param theCase which {@link Application} is required, 
+	 * not <code>null</code>;
+	 * @return localized {@link Application#getName()} or <code>null</code>
+	 * on failure. 
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public String getServiceDescription(Case theCase);
 
-	@Override
-	protected void doGet(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
-		initializeContext(request, response);
-		super.doGet(request, response);
-	}
+	/**
+	 * 
+	 * @return all {@link Application}s found in this system,
+	 * {@link Collections#emptyList()} on failure.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public Collection<Application> getServices();
+
+	/**
+	 * 
+	 * @param service to search icon for, not <code>null</code>;
+	 * @return {@link URL} to system icon, or <code>null</code>
+	 * on failure.
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public URL getServiceLogoURL(Application service);
 	
-	private void initializeContext(ServletRequest request, ServletResponse response) {
-		IWContext iwc = CoreUtil.getIWContext();
-		if (iwc == null)
-			iwc = new IWContext((HttpServletRequest) request, (HttpServletResponse) response, getServletContext());
-
-		String localeString = request.getParameter(LocaleSwitcher.languageParameterString);
-		if (!StringUtil.isEmpty(localeString)) {
-			Locale locale = ICLocaleBusiness.getLocaleFromLocaleString(localeString);
-			if (locale == null)
-				Logger.getLogger(getClass().getName()).warning("Unable to resolve locale from provided value: " + localeString);
-			else
-				iwc.setCurrentLocale(locale);
-		}
-	}
 }

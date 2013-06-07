@@ -1,5 +1,5 @@
 /**
- * @(#)Axis2ExtendedServlet.java    1.0.0 9:08:30 AM
+ * @(#)LegacyCasesService.java    1.0.0 2:31:44 PM
  *
  * Idega Software hf. Source Code Licence Agreement x
  *
@@ -80,69 +80,165 @@
  *     License that was purchased to become eligible to receive the Source 
  *     Code after Licensee receives the source code. 
  */
-package com.idega.axis2.servlet;
+package com.idega.xroad.service.business;
 
-import java.io.IOException;
-import java.util.Locale;
-import java.util.logging.Logger;
+import is.idega.idegaweb.egov.cases.presentation.CaseViewer;
 
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.rmi.RemoteException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.logging.Level;
 
-import org.apache.axis2.transport.http.AxisServlet;
+import javax.ejb.FinderException;
 
-import com.idega.core.localisation.business.ICLocaleBusiness;
-import com.idega.core.localisation.business.LocaleSwitcher;
-import com.idega.presentation.IWContext;
-import com.idega.util.CoreUtil;
-import com.idega.util.StringUtil;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Service;
+
+import com.idega.block.process.data.Case;
+import com.idega.block.process.data.CaseLog;
+import com.idega.builder.bean.AdvancedProperty;
+import com.idega.builder.business.BuilderLogic;
+import com.idega.user.data.Group;
+import com.idega.util.CoreConstants;
+import com.idega.util.ListUtil;
 
 /**
- * <p>TODO</p>
+ * <p>Service for {@link Case}s, which are not BPM {@link Case}s.</p>
  * <p>You can report about problems to: 
  * <a href="mailto:martynas@idega.is">Martynas Stakė</a></p>
  *
- * @version 1.0.0 Apr 30, 2013
+ * @version 1.0.0 May 6, 2013
  * @author <a href="mailto:martynas@idega.is">Martynas Stakė</a>
  */
-public class Axis2ExtendedServlet extends AxisServlet{
+@Service(LegacyCasesService.BEAN_NAME)
+@Scope(BeanDefinition.SCOPE_SINGLETON)
+public class LegacyCasesService extends CasesService {
 
-	private static final long serialVersionUID = 1L;
+	public static final String BEAN_NAME = "legacyCasesService";
 	
+	/* (non-Javadoc)
+	 * @see com.idega.xroad.service.business.CasesService#getName(com.idega.block.process.data.Case)
+	 */
 	@Override
-	public void init() throws ServletException {
-		super.init();
+	public String getName(Case theCase, Long stepID) {
+		return getStatus(theCase, stepID);
 	}
 
+	/* (non-Javadoc)
+	 * @see com.idega.xroad.service.business.CasesService#getDocumentsIDs(com.idega.block.process.data.Case)
+	 */
 	@Override
-	protected void doPost(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
-		initializeContext(request, response);
-		super.doPost(request, response);
+	public List<String> getDocumentsIDs(Case theCase, Long stepID) {
+		return null;
 	}
 
+	/* (non-Javadoc)
+	 * @see com.idega.xroad.service.business.CasesService#getStepID(com.idega.block.process.data.Case)
+	 */
 	@Override
-	protected void doGet(HttpServletRequest request,
-			HttpServletResponse response) throws ServletException, IOException {
-		initializeContext(request, response);
-		super.doGet(request, response);
-	}
-	
-	private void initializeContext(ServletRequest request, ServletResponse response) {
-		IWContext iwc = CoreUtil.getIWContext();
-		if (iwc == null)
-			iwc = new IWContext((HttpServletRequest) request, (HttpServletResponse) response, getServletContext());
-
-		String localeString = request.getParameter(LocaleSwitcher.languageParameterString);
-		if (!StringUtil.isEmpty(localeString)) {
-			Locale locale = ICLocaleBusiness.getLocaleFromLocaleString(localeString);
-			if (locale == null)
-				Logger.getLogger(getClass().getName()).warning("Unable to resolve locale from provided value: " + localeString);
-			else
-				iwc.setCurrentLocale(locale);
+	public List<Long> getStepIDs(Case theCase) {
+		if (theCase == null) {
+			return null;
 		}
+
+		Collection<CaseLog> logs = getCaseLogs(theCase);
+		if (ListUtil.isEmpty(logs)) {
+			return null;
+		}
+
+		List<Long> ids = new ArrayList<Long>(logs.size());
+		for (CaseLog log: logs) {
+			ids.add(Long.valueOf(log.getPrimaryKey().toString()));
+		}
+
+		return ids;
+	}
+
+	/* (non-Javadoc)
+	 * @see com.idega.xroad.service.business.CasesService#getStepURL(com.idega.block.process.data.Case)
+	 */
+	@Override
+	public String getStepURL(Case theCase, Long stepID) {
+		if (theCase == null || stepID == null) {
+			return null;
+		}
+		
+		BuilderLogic logic = BuilderLogic.getInstance();
+		if (logic == null) {
+			return null;
+		}
+		
+		List<AdvancedProperty> parameters = new ArrayList<AdvancedProperty>(2);
+		parameters.add(new AdvancedProperty(
+				CaseViewer.PARAMETER_CASE_PK, theCase.getId()));
+		parameters.add(new AdvancedProperty(
+				CaseViewer.PARAMETER_ACTION, 
+				String.valueOf(CaseViewer.ACTION_VIEW)));
+
+		return getHost() + logic.getUriToObject(CaseViewer.class, parameters);
+	}
+
+	protected Collection<CaseLog> getCaseLogs(Case theCase) {
+		if (theCase == null) {
+			return null;
+		}
+		
+		try {
+			return getCasesBusiness().getCaseLogsByCase(theCase);
+		} catch (RemoteException e) {
+			getLogger().log(Level.WARNING, 
+					"Unable to connect data source: ", e);
+		} catch (FinderException e) {
+			getLogger().log(
+					Level.WARNING, "Unable to get logs by " + 
+							Case.class + ": " + theCase);
+		}
+		
+		return null;
+	}
+
+	@Override
+	public String getOfficialName(Case theCase) {
+		if (theCase == null) {
+			return CoreConstants.EMPTY;
+		}
+		
+		Group handlerGroup = theCase.getHandler();
+		if (handlerGroup == null) {
+			return CoreConstants.EMPTY;
+		}
+		
+		return handlerGroup.getName();
+	}
+
+	@Override
+	public String getOfficialID(Case theCase) {
+		if (theCase == null) {
+			return null;
+		}
+		
+		Group handler = theCase.getHandler();
+		if (handler == null) {
+			return null;
+		}
+		
+		return handler.getPrimaryKey().toString();
+	}
+
+	@Override
+	public Date getLastOperationDate(Case theCase, Long caseLogId) {
+		if (theCase == null) {
+			return null;
+		}
+		
+		CaseLog log = getCaseLog(theCase, caseLogId);
+		if (log == null) {
+			return null;
+		}
+		
+		return log.getTimeStamp();
 	}
 }
