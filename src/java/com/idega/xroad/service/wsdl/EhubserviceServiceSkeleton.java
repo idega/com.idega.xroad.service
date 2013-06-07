@@ -443,7 +443,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		
 		User administrator = null;
 		try {
-			administrator = iwc.getAccessController().getAdministratorUser();
+			administrator = getOldUser(iwc.getAccessController().getAdministratorUser());
 		} catch (Exception e1) {
 			throw new java.lang.NullPointerException(
 					"Unable to get administrator access, " +
