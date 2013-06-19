@@ -88,6 +88,7 @@ import is.idega.idegaweb.egov.bpm.cases.presentation.beans.CasesBPMAssetsState;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
@@ -165,17 +166,17 @@ public class BPMCasesService extends CasesService {
 	@Override
 	public List<String> getDocumentsIDs(Case theCase, Long taskInstanceID) {
 		if (taskInstanceID == null || theCase == null) {
-			return null;
+			return Collections.emptyList();
 		}
 
 		TaskInstanceW taskInstance = getTaskInstanceW(theCase, taskInstanceID);
 		if (taskInstance == null || !taskInstance.isSubmitted()) {
-			return null;
+			return Collections.emptyList();
 		}
 
 		List<BinaryVariable> attachments = taskInstance.getAttachments();
 		if (ListUtil.isEmpty(attachments)) {
-			return null;
+			return Collections.emptyList();
 		}
 
 		List<String> attachmentsIDs = new ArrayList<String>();
@@ -258,12 +259,12 @@ public class BPMCasesService extends CasesService {
 	@Override
 	public String getOfficialName(Case theCase) {
 		if (theCase == null) {
-			return CoreConstants.EMPTY;
+			return null;
 		}
 		
 		User user = getOfficial(theCase);
 		if (user == null) {
-			return CoreConstants.EMPTY;
+			return null;
 		}
 		
 		return user.getName();
@@ -272,12 +273,12 @@ public class BPMCasesService extends CasesService {
 	@Override
 	public String getOfficialID(Case theCase) {
 		if (theCase == null) {
-			return CoreConstants.EMPTY;
+			return null;
 		}
 		
 		User user = getOfficial(theCase);
 		if (user == null) {
-			return CoreConstants.EMPTY;
+			return null;
 		}
 		
 		return user.getPersonalID();
@@ -489,6 +490,25 @@ public class BPMCasesService extends CasesService {
 		}
 		
 		return null;
+	}
+	
+	@Override
+	public Boolean isSubmitted(Case theCase, Long taskInstanceID) {
+		if (theCase == null) {
+			return null;
+		}
+		
+		TaskInstanceW taskInstanceW = getTaskInstanceW(theCase, taskInstanceID);
+		if (taskInstanceW != null) {
+			return taskInstanceW.isSubmitted();
+		}
+		
+		CaseLog caselog = getCaseLog(theCase, taskInstanceID);
+		if (caselog != null && caselog.getCaseStatusAfter() !=null) {
+			return Boolean.TRUE;
+		} else {
+			return Boolean.FALSE;
+		}
 	}
 }
 
