@@ -90,11 +90,14 @@ import java.net.URL;
 import java.rmi.RemoteException;
 import java.sql.Timestamp;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 
 import javax.ejb.FinderException;
+
+import org.jbpm.taskmgmt.exe.TaskInstance;
 
 import com.idega.block.process.business.CaseBusiness;
 import com.idega.block.process.data.Case;
@@ -332,7 +335,8 @@ public abstract class CasesService extends DefaultSpringBean{
 	 * 
 	 * @param theCase which has task, not <code>null</code>;
 	 * @param stepID - id of task, which has attachments, not <code>null</code>;
-	 * @return {@link List} of document ids or <code>null</code> on failure.
+	 * @return {@link List} of document ids or {@link Collections#emptyList()} 
+	 * on failure.
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public abstract List<String> getDocumentsIDs(Case theCase, Long stepID);
@@ -355,6 +359,18 @@ public abstract class CasesService extends DefaultSpringBean{
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
 	public abstract String getStepURL(Case theCase, Long stepID);
+	
+	/**
+	 * 
+	 * <p>Checks if given step of {@link Case} is submitted.</p>
+	 * @param theCase to check, not <code>null</code>;
+	 * @param stepId is {@link TaskInstance#getId()} or 
+	 * {@link CaseLog#getPrimaryKey()}, not <code>null</code>;
+	 * @return <code>true</code> when submitted, <code>false</code> when not 
+	 * and <code>null</code> on error;
+	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
+	 */
+	public abstract Boolean isSubmitted(Case theCase, Long stepId);
 	
 	protected CaseLog getCaseLog(Case theCase, Long stepID) {
 		if (theCase == null) {

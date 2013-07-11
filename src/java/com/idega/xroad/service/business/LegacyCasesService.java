@@ -87,6 +87,7 @@ import is.idega.idegaweb.egov.cases.presentation.CaseViewer;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
@@ -102,7 +103,6 @@ import com.idega.block.process.data.CaseLog;
 import com.idega.builder.bean.AdvancedProperty;
 import com.idega.builder.business.BuilderLogic;
 import com.idega.user.data.Group;
-import com.idega.util.CoreConstants;
 import com.idega.util.ListUtil;
 
 /**
@@ -132,7 +132,7 @@ public class LegacyCasesService extends CasesService {
 	 */
 	@Override
 	public List<String> getDocumentsIDs(Case theCase, Long stepID) {
-		return null;
+		return Collections.emptyList();
 	}
 
 	/* (non-Javadoc)
@@ -203,12 +203,12 @@ public class LegacyCasesService extends CasesService {
 	@Override
 	public String getOfficialName(Case theCase) {
 		if (theCase == null) {
-			return CoreConstants.EMPTY;
+			return null;
 		}
 		
 		Group handlerGroup = theCase.getHandler();
 		if (handlerGroup == null) {
-			return CoreConstants.EMPTY;
+			return null;
 		}
 		
 		return handlerGroup.getName();
@@ -240,5 +240,15 @@ public class LegacyCasesService extends CasesService {
 		}
 		
 		return log.getTimeStamp();
+	}
+	
+	@Override
+	public Boolean isSubmitted(Case theCase, Long stepId) {
+		CaseLog caselog = getCaseLog(theCase, stepId);
+		if (caselog != null && caselog.getCaseStatusAfter() !=null) {
+			return Boolean.TRUE;
+		} else {
+			return Boolean.FALSE;
+		}
 	}
 }
