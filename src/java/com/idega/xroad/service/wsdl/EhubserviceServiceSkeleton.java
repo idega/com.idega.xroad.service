@@ -542,7 +542,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		
 		User administrator = null;
 		try {
-			administrator = getOldUser(iwc.getAccessController().getAdministratorUser());
+			administrator = getLegacyUser(iwc.getAccessController().getAdministratorUser());
 		} catch (Exception e1) {
 			throw new java.lang.NullPointerException(
 					"Unable to get administrator access, " +
