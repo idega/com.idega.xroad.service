@@ -24,10 +24,13 @@ import javax.activation.DataSource;
 import javax.ejb.FinderException;
 import javax.mail.util.ByteArrayDataSource;
 
+import net.x_rd.ee.ehubservice.producer.AllowedMethodList;
 import net.x_rd.ee.ehubservice.producer.AllowedMethods;
 import net.x_rd.ee.ehubservice.producer.AllowedMethodsResponse;
-import net.x_rd.ee.ehubservice.producer.CaseProcessingStep_type0;
-import net.x_rd.ee.ehubservice.producer.Case_type0;
+import net.x_rd.ee.ehubservice.producer.AllowedMethodsResponseE;
+import net.x_rd.ee.ehubservice.producer.CaseDetails;
+import net.x_rd.ee.ehubservice.producer.CaseList;
+import net.x_rd.ee.ehubservice.producer.CaseStep;
 import net.x_rd.ee.ehubservice.producer.GetCaseDetails;
 import net.x_rd.ee.ehubservice.producer.GetCaseDetailsE;
 import net.x_rd.ee.ehubservice.producer.GetCaseDetailsRequest;
@@ -68,27 +71,34 @@ import net.x_rd.ee.ehubservice.producer.GetXFormLabelsE;
 import net.x_rd.ee.ehubservice.producer.GetXFormLabelsRequest;
 import net.x_rd.ee.ehubservice.producer.GetXFormLabelsResponse;
 import net.x_rd.ee.ehubservice.producer.GetXFormLabelsResponseE;
-import net.x_rd.ee.ehubservice.producer.LabelPair_type0;
+import net.x_rd.ee.ehubservice.producer.LabelPair;
 import net.x_rd.ee.ehubservice.producer.LabelType;
 import net.x_rd.ee.ehubservice.producer.LangType;
-import net.x_rd.ee.ehubservice.producer.Message_type0;
-import net.x_rd.ee.ehubservice.producer.Notification_type0;
-import net.x_rd.ee.ehubservice.producer.Response_type10;
-import net.x_rd.ee.ehubservice.producer.Response_type11;
-import net.x_rd.ee.ehubservice.producer.Response_type12;
-import net.x_rd.ee.ehubservice.producer.Response_type3;
-import net.x_rd.ee.ehubservice.producer.Response_type4;
-import net.x_rd.ee.ehubservice.producer.Response_type5;
-import net.x_rd.ee.ehubservice.producer.Response_type6;
-import net.x_rd.ee.ehubservice.producer.Response_type7;
-import net.x_rd.ee.ehubservice.producer.Response_type8;
-import net.x_rd.ee.ehubservice.producer.Response_type9;
-import net.x_rd.ee.ehubservice.producer.ServiceEntry_type0;
+import net.x_rd.ee.ehubservice.producer.MarkCaseAsRead;
+import net.x_rd.ee.ehubservice.producer.MarkCaseAsReadE;
+import net.x_rd.ee.ehubservice.producer.MarkCaseAsReadRequest;
+import net.x_rd.ee.ehubservice.producer.MarkCaseAsReadResponse;
+import net.x_rd.ee.ehubservice.producer.MarkCaseAsReadResponseE;
+import net.x_rd.ee.ehubservice.producer.MarkNotificationAsRead;
+import net.x_rd.ee.ehubservice.producer.MarkNotificationAsReadE;
+import net.x_rd.ee.ehubservice.producer.MarkNotificationAsReadRequest;
+import net.x_rd.ee.ehubservice.producer.MarkNotificationAsReadResponse;
+import net.x_rd.ee.ehubservice.producer.MarkNotificationAsReadResponseE;
+import net.x_rd.ee.ehubservice.producer.MarkResult;
+import net.x_rd.ee.ehubservice.producer.Message;
+import net.x_rd.ee.ehubservice.producer.MessagesList;
+import net.x_rd.ee.ehubservice.producer.Notification;
+import net.x_rd.ee.ehubservice.producer.NotificationsList;
+import net.x_rd.ee.ehubservice.producer.PreffiledDocument;
+import net.x_rd.ee.ehubservice.producer.ServiceEntry;
+import net.x_rd.ee.ehubservice.producer.ServiceList;
 import net.x_rd.ee.ehubservice.producer.SubmitDocument;
 import net.x_rd.ee.ehubservice.producer.SubmitDocumentE;
 import net.x_rd.ee.ehubservice.producer.SubmitDocumentRequest;
 import net.x_rd.ee.ehubservice.producer.SubmitDocumentResponse;
 import net.x_rd.ee.ehubservice.producer.SubmitDocumentResponseE;
+import net.x_rd.ee.ehubservice.producer.SubmittedDocumentInfo;
+import net.x_rd.ee.ehubservice.producer.XFormLabel;
 
 import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -104,10 +114,13 @@ import com.idega.business.IBOLookupException;
 import com.idega.core.accesscontrol.business.LoginBusinessBean;
 import com.idega.core.business.DefaultSpringBean;
 import com.idega.core.file.util.MimeTypeUtil;
+import com.idega.data.IDOLookup;
 import com.idega.idegaweb.IWMainApplication;
 import com.idega.idegaweb.IWMainApplicationSettings;
 import com.idega.notifier.business.NotificationService;
 import com.idega.notifier.data.NotificationEntity;
+import com.idega.notifier.data.NotificationReceiverEntity;
+import com.idega.notifier.data.dao.NotificationEntityDAO;
 import com.idega.presentation.IWContext;
 import com.idega.user.data.User;
 import com.idega.util.ArrayUtil;
@@ -157,6 +170,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	
 	@Autowired
 	private NotificationService notificationService = null;
+
+	@Autowired
+	private NotificationEntityDAO notificationEntityDAO = null;
 	
 	private com.idega.user.business.UserBusiness userBussiness = null;
 	
@@ -210,13 +226,13 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 					User.class.getName() + " by personalID: " + personalID);
 		}
 		
-		Response_type3 response = new Response_type3();
+		CaseList response = new CaseList();
 		for (Case activeCase : activeCases) {
 			if (StringUtil.isEmpty(activeCase.getCaseIdentifier())) {
 				continue;
 			}
 			
-			Case_type0 caseType = new Case_type0();
+			net.x_rd.ee.ehubservice.producer.Case caseType = new net.x_rd.ee.ehubservice.producer.Case();
 			caseType.setId(activeCase.getCaseIdentifier());
 			caseType.setLastOperationDate(getCasesService(activeCase)
 					.getLastOperationDate(activeCase, null));
@@ -231,7 +247,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			caseType.setTypeLabel(getLabelType(getApplicationService()
 					.getServiceDescription(activeCase), null));
 				
-			response.add_case(caseType);
+			response.addCases(caseType);
 		}
 		
 		GetCaseListResponse caseListResponse = new GetCaseListResponse();
@@ -301,9 +317,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 					caseID + " does not have steps!");
 		}
 		
-		Response_type8 response = new Response_type8();
+		CaseDetails response = new CaseDetails();
 		for (long id : ids) {
-			CaseProcessingStep_type0 caseProcessingStep = new CaseProcessingStep_type0();
+			CaseStep caseProcessingStep = new CaseStep();
 			
 			List<String> documentIds = getCasesService(selectedCase)
 					.getDocumentsIDs(selectedCase, id);
@@ -398,12 +414,12 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 					XForm.class.getName() + " by id: " + xformID);
 		}
 		
-		Response_type12 response = new Response_type12();
+		XFormLabel response = new XFormLabel();
 		for (String key : labels.keySet()) {
-			LabelPair_type0 labelPair = new LabelPair_type0();
+			LabelPair labelPair = new LabelPair();
 			labelPair.setKey(key);
 			labelPair.setLabel(labels.get(key));
-			response.addLabelPair(labelPair);
+			response.addLabelPairs(labelPair);
 		}	
 		
 		GetXFormLabelsResponse xFormLabelsResponse = new GetXFormLabelsResponse();
@@ -457,9 +473,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 					"No notifications found for user by id: " + userId);
 		}
 		
-		List<Notification_type0> notifications = new ArrayList<Notification_type0>(notificationEntities.size());
+		List<Notification> notifications = new ArrayList<Notification>(notificationEntities.size());
 		for (NotificationEntity notificationEntity: notificationEntities) {
-			Notification_type0 nt = new Notification_type0();
+			Notification nt = new Notification();
 			nt.setNotificationId(String.valueOf(notificationEntity.getId()));
 			
 			User receiver = getUser(userId);
@@ -475,9 +491,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			notifications.add(nt);
 		}
 		
-		Response_type7 response = new Response_type7();		
-		response.setNotification(notifications.toArray(
-				new Notification_type0[notificationEntities.size()]));
+		NotificationsList response = new NotificationsList();		
+		response.setNotifications(notifications.toArray(
+				new Notification[notificationEntities.size()]));
 		
 		GetNotificationsResponse notificationsResponse = new GetNotificationsResponse();
 		notificationsResponse.setResponse(response);
@@ -596,7 +612,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 				documentTemplateBytes, 
 				MimeTypeUtil.MIME_TYPE_XML);
 		
-		Response_type6 response = new Response_type6();
+		net.x_rd.ee.ehubservice.producer.Document response = new net.x_rd.ee.ehubservice.producer.Document();
 		response.setDocument(new DataHandler(documentSource));
 		response.setXFormsTemplate(new DataHandler(documentTemplateSource));
 		
@@ -617,28 +633,28 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	 * @throws NullPointerException if correct request is not provided;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
-	public AllowedMethodsResponse allowedMethods(AllowedMethods allowedMethods) {
+	public AllowedMethodsResponseE allowedMethods(AllowedMethods allowedMethods) {
 		if (allowedMethods == null) {
 			throw new java.lang.NullPointerException("Request of class " +
 					AllowedMethods.class.getName() + 
 					" is null. Please provide correct request!");
 		}
 
-		// FIXME
-		String dummy = allowedMethods.getDummy();
-		
 		Method[] methods = EhubserviceServiceSkeletonInterface.class.getDeclaredMethods();
 		if (ArrayUtil.isEmpty(methods)) {
 			throw new NullPointerException("No methods found in this service!");
 		}
 
-		Response_type11 response = new Response_type11();
+		AllowedMethodList allowedMethod = new AllowedMethodList();
 		for (Method method : methods) {
-			response.addItem(method.getName());
+			allowedMethod.addItem(method.getName());
 		}
 
-		AllowedMethodsResponse allowedMethodsResponse = new AllowedMethodsResponse();
-		allowedMethodsResponse.setResponse(response);
+		AllowedMethodsResponse response = new AllowedMethodsResponse();
+		response.setResponse(allowedMethod);
+
+		AllowedMethodsResponseE allowedMethodsResponse = new AllowedMethodsResponseE();
+		allowedMethodsResponse.setAllowedMethodsResponse(response);
 
 		return allowedMethodsResponse;
 	}
@@ -686,11 +702,11 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			throw new java.lang.NullPointerException("No services found on this system!");
 		}
 		
-		Response_type10 response = new Response_type10();
+		ServiceList response = new ServiceList();
 		for (Application service : services) {
 			
 			/* Setting service id */
-			ServiceEntry_type0 serviceEntry = new ServiceEntry_type0();
+			ServiceEntry serviceEntry = new ServiceEntry();
 			serviceEntry.setId(service.getPrimaryKey().toString());
 			
 			/* Setting label */
@@ -707,7 +723,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 				serviceEntry.setIcon(new DataHandler(icon));
 			}
 			
-			response.addServiceEntry(serviceEntry);
+			response.addServiceEntries(serviceEntry);
 		}
 		
 		GetServiceListResponse serviceListResponse = new GetServiceListResponse();
@@ -768,9 +784,9 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 					User.class.getName() + " by personal id: " + personalID);
 		}
 		
-		Response_type5 response = new Response_type5();
+		MessagesList response = new MessagesList();
 		for (UserMessage message : messages) {
-			Message_type0 messageType = new Message_type0();
+			Message messageType = new Message();
 			messageType.setBody(message.getBody());
 			messageType.setDate(message.getCreated());
 			messageType.setId(message.getId());
@@ -779,7 +795,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			messageType.setSubject(message.getSubject());
 			messageType.setRead(message.isRead());
 
-			response.addMessage(messageType);
+			response.addMessages(messageType);
 		}
 		
 		GetMessagesListResponse messagesListResponse = new GetMessagesListResponse();
@@ -847,7 +863,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		LabelType submissionStatusLabel = null; //getLabelType(status, language);
 		LabelType caseNameLabel = null; //getLabelType(caseDescription, language);
 		
-		Response_type4 response = new Response_type4();
+		SubmittedDocumentInfo response = new SubmittedDocumentInfo();
 		response.setCaseNameLabel(caseNameLabel);
 		response.setSubmissionStatusLabel(submissionStatusLabel);
 		
@@ -957,7 +973,7 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 				documentBytes, 
 				MimeTypeUtil.MIME_TYPE_XML);
 		
-		Response_type9 response = new Response_type9();
+		PreffiledDocument response = new PreffiledDocument();
 		response.setDocument(new DataHandler(documentSource));
 		response.setDocumentType(MimeTypeUtil.MIME_TYPE_XML);
 		
@@ -968,6 +984,120 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		GetPrefilledDocumentResponseE prefilledDocumentResponseE = new GetPrefilledDocumentResponseE();
 		prefilledDocumentResponseE.setGetPrefilledDocumentResponse(prefilledDocumentResponse);
 		return prefilledDocumentResponseE;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.wsdl.EhubserviceServiceSkeletonInterface#markNotificationAsRead(net.x_rd.ee.ehubservice.producer.MarkNotificationAsReadE)
+	 */
+	@Override
+	public MarkNotificationAsReadResponseE markNotificationAsRead(
+			MarkNotificationAsReadE markNotificationAsReadE) {
+		if (markNotificationAsReadE == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					MarkNotificationAsReadE.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+
+		MarkNotificationAsRead notificationInfo = markNotificationAsReadE.getMarkNotificationAsRead();
+		if (notificationInfo == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					MarkNotificationAsRead.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+
+		MarkNotificationAsReadRequest request = notificationInfo.getRequest();
+		if (request == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					MarkNotificationAsReadRequest.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+		
+		String notificationId = request.getNotificationId();
+		if (StringUtil.isEmpty(notificationId)) {
+			throw new java.lang.NullPointerException("Notification id not provided!");
+		}
+
+		
+		NotificationReceiverEntity notification = getNotificationEntityDAO().update(
+				Long.valueOf(notificationId), null, null, 
+				request.getMarkAsRead());
+		
+		MarkResult response = new MarkResult();
+		response.setSuccess(notification != null);
+		if (response.getSuccess()) {
+			response.setMessage("Notification by id: '" + notificationId + "' successfully updated!");
+		} else {
+			response.setMessage("Failed to update notification by id: '" + notificationId + "'!");
+		}
+		
+
+		MarkNotificationAsReadResponse markNotificationAsReadResponse = new MarkNotificationAsReadResponse();
+		markNotificationAsReadResponse.setRequest(request);
+		markNotificationAsReadResponse.setResponse(response);
+
+		MarkNotificationAsReadResponseE markNotificationAsReadResponseE = new MarkNotificationAsReadResponseE();
+		markNotificationAsReadResponseE.setMarkNotificationAsReadResponse(markNotificationAsReadResponse);
+		return markNotificationAsReadResponseE;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.idega.xroad.service.wsdl.EhubserviceServiceSkeletonInterface#markCaseAsRead(net.x_rd.ee.ehubservice.producer.MarkCaseAsReadE)
+	 */
+	@Override
+	public MarkCaseAsReadResponseE markCaseAsRead(MarkCaseAsReadE markCaseAsReadE) {
+		if (markCaseAsReadE == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					MarkCaseAsReadE.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+
+		MarkCaseAsRead markCaseAsRead = markCaseAsReadE.getMarkCaseAsRead();
+		if (markCaseAsRead == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					MarkCaseAsRead.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+
+		MarkCaseAsReadRequest request = markCaseAsRead.getRequest();
+		if (request == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					MarkCaseAsReadRequest.class.getName()  + 
+					" is null. Please provide correct request!");
+		}
+
+		String caseId = request.getCaseId();
+		if (StringUtil.isEmpty(caseId)) {
+			throw new java.lang.NullPointerException("Case id not provided!");
+		}
+
+		Case theCase = null;
+		try {
+			theCase = IDOLookup.findByPrimaryKey(Case.class, Integer.valueOf(caseId));
+		} catch (Exception e) {
+			throw new NullPointerException(Case.class.getName() + " not found by primary key: '" + caseId + "'");
+		}
+
+		theCase.setRead(request.getMarkAsRead());
+		theCase.store();
+
+		MarkResult response = new MarkResult();
+		response.setSuccess(theCase.isRead().booleanValue() == request.getMarkAsRead());
+		if (response.getSuccess()) {
+			response.setMessage(Case.class.getName() + " by primary key: '" + caseId + "' successfully updated!");
+		} else {
+			response.setMessage("Failed to update " + Case.class.getName() + " by primary key: '" + caseId + "'");
+		}
+		
+
+		MarkCaseAsReadResponse markCaseAsReadResponse = new MarkCaseAsReadResponse();
+		markCaseAsReadResponse.setRequest(request);
+		markCaseAsReadResponse.setResponse(response);
+
+		MarkCaseAsReadResponseE markCaseAsReadResponseE = new MarkCaseAsReadResponseE();
+		markCaseAsReadResponseE.setMarkCaseAsReadResponse(markCaseAsReadResponse);
+		return markCaseAsReadResponseE;
 	}
 
 	protected LabelType getLabelType(String label, String language) {
@@ -1038,7 +1168,15 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 		
 		return this.notificationService;
 	}
-	
+
+	protected NotificationEntityDAO getNotificationEntityDAO() {
+		if (this.notificationEntityDAO == null) {
+			ELUtil.getInstance().autowire(this);
+		}
+
+		return this.notificationEntityDAO;
+	}
+
 	protected com.idega.user.business.UserBusiness getUserBusiness() {
 		if (this.userBussiness != null) {
 			return this.userBussiness;
