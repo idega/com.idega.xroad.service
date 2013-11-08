@@ -720,9 +720,13 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			/* Setting application icon */
 			URL icon = getApplicationService().getServiceLogoURL(service);
 			if (icon != null) {
-				serviceEntry.setIcon(new DataHandler(icon));
+				serviceEntry.setIconURI(icon.toString());
 			}
-			
+	
+			serviceEntry.setServiceURI(service.getUrl());
+			serviceEntry.setRequiresSecureSession(service.getRequiresLogin());
+
+//			FIXME serviceEntry.setCompanyId(param)
 			response.addServiceEntries(serviceEntry);
 		}
 		
@@ -794,6 +798,24 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 			messageType.setOrgLabel(getLabelType(getOrganizationName(), null));
 			messageType.setSubject(message.getSubject());
 			messageType.setRead(message.isRead());
+			
+			/* Setting subscribers as receivers */
+			Collection<User> receivers = message.getSubscribers();
+			if (!ListUtil.isEmpty(receivers)) {
+				net.x_rd.ee.ehubservice.producer.User[] convertedReceivers = new net.x_rd.ee.ehubservice.producer.User[receivers.size()]; 
+				int i = 0;
+				for (User receiver: receivers) {
+					net.x_rd.ee.ehubservice.producer.User convertedReceiver = new net.x_rd.ee.ehubservice.producer.User();
+					try {
+						convertedReceiver.setEmail(receiver.getUsersEmail().getEmailAddress());
+					} catch (Exception e) {	}
+					convertedReceiver.setName(receiver.getName());
+					convertedReceiver.setIdentificationNumber(receiver.getPersonalID());
+					convertedReceivers[i++] = convertedReceiver;
+				}
+
+				messageType.setReceivers(convertedReceivers);
+			}
 
 			response.addMessages(messageType);
 		}
