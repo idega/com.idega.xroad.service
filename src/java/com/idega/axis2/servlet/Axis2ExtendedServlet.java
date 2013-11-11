@@ -101,7 +101,7 @@ import com.idega.util.CoreUtil;
 import com.idega.util.StringUtil;
 
 /**
- * <p>TODO</p>
+ * <p>Class for initializing {@link IWContext}</p>
  * <p>You can report about problems to: 
  * <a href="mailto:martynas@idega.is">Martynas Stakė</a></p>
  *
