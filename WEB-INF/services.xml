@@ -7,7 +7,7 @@
             <messageReceiver mep="http://www.w3.org/ns/wsdl/in-out" class="com.idega.xroad.service.wsdl.EhubserviceServiceMessageReceiverInOut"/>
         </messageReceivers>
         <parameter name="ServiceClass">com.idega.xroad.service.wsdl.EhubserviceServiceSkeleton</parameter>
-        <parameter name="useOriginalwsdl">false</parameter>
+        <parameter name="useOriginalwsdl">true</parameter>
         <parameter name="modifyUserWSDLPortAddress">true</parameter>
         <operation name="GetCaseList" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
             <actionMapping>\"\"</actionMapping>
@@ -17,12 +17,16 @@
             <actionMapping>\"\"</actionMapping>
             <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetCaseDetailsResponse</outputActionMapping>
         </operation>
+        <operation name="MarkNotificationAsRead" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/MarkNotificationAsReadResponse</outputActionMapping>
+        </operation>
         <operation name="GetXFormLabels" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
             <actionMapping>\"\"</actionMapping>
             <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetXFormLabelsResponse</outputActionMapping>
         </operation>
         <operation name="GetNotifications" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
-            <actionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetNotifications</actionMapping>
+            <actionMapping>\"\"</actionMapping>
             <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetNotificationsResponse</outputActionMapping>
         </operation>
         <operation name="GetDocument" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
@@ -36,6 +40,10 @@
         <operation name="GetServiceList" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
             <actionMapping>\"\"</actionMapping>
             <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/GetServiceListResponse</outputActionMapping>
+        </operation>
+        <operation name="MarkCaseAsRead" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
+            <actionMapping>\"\"</actionMapping>
+            <outputActionMapping>http://ehubservice.ee.x-rd.net/producer/ehubserviceporttype/MarkCaseAsReadResponse</outputActionMapping>
         </operation>
         <operation name="GetMessagesList" mep="http://www.w3.org/ns/wsdl/in-out" namespace="http://ehubservice.ee.x-rd.net/producer/">
             <actionMapping>\"\"</actionMapping>
