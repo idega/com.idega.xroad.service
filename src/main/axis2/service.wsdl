@@ -1779,7 +1779,7 @@
   <wsdl:service name="ehubserviceService">
     <wsdl:port binding="tns:ehubservicebinding" name="ehubserviceSoap11">
       <!-- ATTENTION - replace with correct security server address for Your environment -->
-      <soap:address location="http://127.0.0.1:8080/axis2/services/ehubserviceService" />
+      <soap:address location="http://impratest.sidan.is/axis2/services/ehubserviceService" />
       <xrd:address producer="ehubservice" />
     </wsdl:port>
   </wsdl:service>
