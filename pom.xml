@@ -80,7 +80,7 @@
 					<databindingName>adb</databindingName>
 					<generateServerSide>true</generateServerSide>
 					<generateServerSideInterface>true</generateServerSideInterface>
-					<generateServicesXml>true</generateServicesXml>
+					<!-- <generateServicesXml>true</generateServicesXml> -->
 				</configuration>
 				<executions>
 					<execution>
