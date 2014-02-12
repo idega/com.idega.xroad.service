@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<project name="com.idega.xroad.service" basedir=".">
+	<target name="build">
+		<delete
+  			file="${basedir}/target/generated-sources/axis2/wsdl2code/src/com/idega/xroad/service/wsdl/EhubserviceServiceSkeleton.java"/>
+	</target>
+</project>

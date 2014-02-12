@@ -150,7 +150,7 @@
         <parameter name="port">8080</parameter>
         <!--If you want to give your own host address for EPR generation-->
         <!--uncomment following parameter , and set as you required.-->
-        <!--<parameter name="hostname">http://myApp.com/ws</parameter>-->
+        <!-- <parameter name="hostname">http://impratest.sidan.is/</parameter> -->
     </transportReceiver>
     
     <transportReceiver 

@@ -1,5 +1,5 @@
-<project 
-	xmlns="http://maven.apache.org/POM/4.0.0" 
+<project
+	xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -10,7 +10,6 @@
 	</parent>
 	<artifactId>com.idega.xroad.service</artifactId>
 	<name>XRoad Axis2 webservice</name>
-
 	<developers>
 		<developer>
 			<name>Martynas Stakė</name>
@@ -20,7 +19,6 @@
 			<roles />
 		</developer>
 	</developers>
-
 	<dependencies>
 		<!-- Addons -->
 		<dependency>
@@ -35,25 +33,26 @@
 			<groupId>com.idega.block.egov</groupId>
 			<artifactId>is.idega.idegaweb.egov.bpm</artifactId>
 		</dependency>
+		<!-- <dependency>
+			<groupId>org.apache.ws.xmlschema</groupId>
+			<artifactId>xmlschema-core</artifactId>
+			<version>2.0</version>
+		</dependency> -->
 		<!-- Axis 2 -->
-	    <dependency>
+		<dependency>
 			<groupId>org.apache.axis2</groupId>
 			<artifactId>axis2-kernel</artifactId>
 			<version>1.6.1</version>
 			<exclusions>
 				<exclusion>
-				  <groupId>javax.ws.rs</groupId>
-			      <artifactId>jsr311-api</artifactId>
-				</exclusion>
-				<exclusion>
-				  <groupId>javax.servlet</groupId>
-			      <artifactId>servlet-api</artifactId>
+					<groupId>javax.servlet</groupId>
+					<artifactId>servlet-api</artifactId>
 				</exclusion>
 				<exclusion>
 					<groupId>org.apache.geronimo.specs</groupId>
 					<artifactId>geronimo-javamail_1.4_spec</artifactId>
 				</exclusion>
-		    </exclusions>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.axis2</groupId>
@@ -81,11 +80,6 @@
 					<databindingName>adb</databindingName>
 					<generateServerSide>true</generateServerSide>
 					<generateServerSideInterface>true</generateServerSideInterface>
-					<!-- 
-						Delete comment, when you need to regenerate services.xml
-						file, otherwise leave commented, because it also generates 
-						unnecessary implementation of service skeleton 
-					-->
 					<!-- <generateServicesXml>true</generateServicesXml> -->
 				</configuration>
 				<executions>
@@ -97,6 +91,61 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>delete-source-file</id>
+						<phase>process-sources</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<ant
+									antfile="${basedir}/build.xml"
+									target="build"
+									inheritRefs="true" />
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
+		<pluginManagement>
+			<plugins>
+				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>
+											org.apache.maven.plugins
+										</groupId>
+										<artifactId>
+											maven-antrun-plugin
+										</artifactId>
+										<versionRange>
+											[1.3,)
+										</versionRange>
+										<goals>
+											<goal>run</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<ignore></ignore>
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 </project>

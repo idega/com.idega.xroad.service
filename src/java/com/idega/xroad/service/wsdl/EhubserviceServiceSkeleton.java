@@ -24,10 +24,10 @@ import javax.activation.DataSource;
 import javax.ejb.FinderException;
 import javax.mail.util.ByteArrayDataSource;
 
-import net.x_rd.ee.ehubservice.producer.AllowedMethodList;
-import net.x_rd.ee.ehubservice.producer.AllowedMethods;
+import net.x_rd.ee.ehubservice.producer.AllowedMethodsRequest;
+import net.x_rd.ee.ehubservice.producer.AllowedMethodsRequestType;
 import net.x_rd.ee.ehubservice.producer.AllowedMethodsResponse;
-import net.x_rd.ee.ehubservice.producer.AllowedMethodsResponseE;
+import net.x_rd.ee.ehubservice.producer.AllowedMethodsList;
 import net.x_rd.ee.ehubservice.producer.CaseDetails;
 import net.x_rd.ee.ehubservice.producer.CaseList;
 import net.x_rd.ee.ehubservice.producer.CaseStep;
@@ -74,6 +74,10 @@ import net.x_rd.ee.ehubservice.producer.GetXFormLabelsResponseE;
 import net.x_rd.ee.ehubservice.producer.LabelPair;
 import net.x_rd.ee.ehubservice.producer.LabelType;
 import net.x_rd.ee.ehubservice.producer.LangType;
+import net.x_rd.ee.ehubservice.producer.ListMethodsE;
+import net.x_rd.ee.ehubservice.producer.ListMethodsRequestType;
+import net.x_rd.ee.ehubservice.producer.ListMethodsResponseE;
+import net.x_rd.ee.ehubservice.producer.ListMethodsResponseType;
 import net.x_rd.ee.ehubservice.producer.MarkCaseAsRead;
 import net.x_rd.ee.ehubservice.producer.MarkCaseAsReadE;
 import net.x_rd.ee.ehubservice.producer.MarkCaseAsReadRequest;
@@ -155,6 +159,8 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	
 	protected static final Logger LOGGER = Logger.getLogger(
 			EhubserviceServiceSkeleton.class.getName());
+
+	private static final String VERSION = "v1";
 	
 	@Autowired
 	private XFormService xFormService;
@@ -633,32 +639,76 @@ public class EhubserviceServiceSkeleton extends DefaultSpringBean implements
 	 * @throws NullPointerException if correct request is not provided;
 	 * @author <a href="mailto:martynas@idega.com">Martynas Stakė</a>
 	 */
-	public AllowedMethodsResponseE allowedMethods(AllowedMethods allowedMethods) {
+	public AllowedMethodsResponse allowedMethods(AllowedMethodsRequest allowedMethods) {
 		if (allowedMethods == null) {
 			throw new java.lang.NullPointerException("Request of class " +
-					AllowedMethods.class.getName() + 
+					AllowedMethodsRequest.class.getName() + 
 					" is null. Please provide correct request!");
 		}
-
+		
 		Method[] methods = EhubserviceServiceSkeletonInterface.class.getDeclaredMethods();
 		if (ArrayUtil.isEmpty(methods)) {
 			throw new NullPointerException("No methods found in this service!");
 		}
 
-		AllowedMethodList allowedMethod = new AllowedMethodList();
+		AllowedMethodsList allowedMethod = new AllowedMethodsList();
 		for (Method method : methods) {
 			allowedMethod.addItem(method.getName());
 		}
 
-		AllowedMethodsResponse response = new AllowedMethodsResponse();
-		response.setResponse(allowedMethod);
-
-		AllowedMethodsResponseE allowedMethodsResponse = new AllowedMethodsResponseE();
-		allowedMethodsResponse.setAllowedMethodsResponse(response);
+		AllowedMethodsResponse allowedMethodsResponse = new AllowedMethodsResponse();
+		allowedMethodsResponse.setAllowedMethodsResponse(allowedMethod);
 
 		return allowedMethodsResponse;
 	}
-	
+
+	@Override
+	public ListMethodsResponseE listMethods(ListMethodsE listMethods) {
+		if (listMethods == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					ListMethodsE.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+
+		ListMethodsRequestType methodsList = listMethods.getListMethods();
+		if (methodsList == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					ListMethodsRequestType.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+
+		AllowedMethodsRequestType request = methodsList.getRequest();
+		if (request == null) {
+			throw new java.lang.NullPointerException("Request of class " +
+					AllowedMethodsRequestType.class.getName() + 
+					" is null. Please provide correct request!");
+		}
+		
+		Method[] methods = EhubserviceServiceSkeletonInterface.class.getDeclaredMethods();
+		if (ArrayUtil.isEmpty(methods)) {
+			throw new NullPointerException("No methods found in this service!");
+		}
+
+		AllowedMethodsList allowedMethod = new AllowedMethodsList();
+		for (Method method : methods) {
+			StringBuilder methodName = new StringBuilder(getOrganizationName());
+			methodName.append(CoreConstants.DOT)
+			.append(method.getName())
+			.append(CoreConstants.DOT)
+			.append(VERSION);
+			allowedMethod.addItem(methodName.toString());
+		}
+
+		ListMethodsResponseType response = new ListMethodsResponseType();
+		response.setResponse(allowedMethod);
+		response.setRequest(request);
+
+		ListMethodsResponseE element = new ListMethodsResponseE();
+		element.setListMethodsResponse(response);
+
+		return element;
+	}
+
 	/**
 	 * 
 	 * <p>Searches database for available {@link ServiceEntity} by given 
