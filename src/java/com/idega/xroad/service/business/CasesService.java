@@ -97,8 +97,6 @@ import java.util.logging.Level;
 
 import javax.ejb.FinderException;
 
-import org.jbpm.taskmgmt.exe.TaskInstance;
-
 import com.idega.block.process.business.CaseBusiness;
 import com.idega.block.process.data.Case;
 import com.idega.block.process.data.CaseLog;

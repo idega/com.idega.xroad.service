@@ -87,9 +87,6 @@ import is.idega.idegaweb.egov.application.data.Application;
 import java.util.Collections;
 import java.util.Map;
 
-import org.jbpm.graph.exe.ProcessInstance;
-import org.jbpm.taskmgmt.def.Task;
-import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.w3c.dom.Document;
 
 import com.idega.block.form.data.XForm;

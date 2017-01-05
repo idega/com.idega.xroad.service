@@ -93,7 +93,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
 
-import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -394,22 +393,17 @@ public class BPMCasesService extends CasesService {
 			return null;
 		}
 		
-		TaskInstance taskInstance = taskInstanceW.getTaskInstance();
-		if (taskInstance == null) {
-			return null;
-		}
-		
-		Date date = taskInstance.getEnd();
+		Date date = taskInstanceW.getEnd();
 		if (date != null) {
 			return date;
 		}
 		
-		date = taskInstance.getStart();
+		date = taskInstanceW.getStart();
 		if (date != null) {
 			return date;
 		}
 		
-		date = taskInstance.getCreate();
+		date = taskInstanceW.getCreate();
 		if (date != null) {
 			return date;
 		}
@@ -465,17 +459,12 @@ public class BPMCasesService extends CasesService {
 			return CoreConstants.EMPTY;
 		}
 		
-		TaskInstance taskInstance = taskInstanceW.getTaskInstance();
-		if (taskInstance == null) {
-			return CoreConstants.EMPTY;
-		}
-		
-		Date end = taskInstance.getEnd();
+		Date end = taskInstanceW.getEnd();
 		if (end == null) {
 			return CoreConstants.EMPTY;
 		}
 		
-		CaseLog caseLog = getCaseLog(end, theCase, taskInstance.getActorId());
+		CaseLog caseLog = getCaseLog(end, theCase, taskInstanceW.getActorId());
 		if (caseLog == null) {
 			return CoreConstants.EMPTY;
 		}

@@ -104,7 +104,6 @@ import net.x_rd.ee.ehubservice.producer.SubmitDocumentResponseE;
 import net.x_rd.ee.ehubservice.producer.SubmittedDocumentInfo;
 import net.x_rd.ee.ehubservice.producer.XFormLabel;
 
-import org.jbpm.taskmgmt.exe.TaskInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
